@@ -10,7 +10,7 @@
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="default" />
     <meta name="apple-mobile-web-app-title" content="皮拉提斯訓練" />
-    <link rel="apple-touch-icon" href="https://pilates-note.com/favicon.ico" />
+    <link rel="apple-touch-icon" href="https://i.ibb.co/YBcmDp0M/yoga.png" />
     
     <!-- Inline Manifest to make it completely self-contained and PWA Installable -->
     <link rel="manifest" href='data:application/manifest+json,{"name":"皮拉提斯訓練紀錄","short_name":"皮拉提斯","theme_color":"#4f46e5","background_color":"#f8fafc","display":"standalone","start_url":".","icons":[{"src":"https://i.ibb.co/YBcmDp0M/yoga.png","sizes":"192x192","type":"image/png"},{"src":"https://i.ibb.co/YBcmDp0M/yoga.png","sizes":"512x512","type":"image/png"}]}' />
@@ -1467,9 +1467,9 @@ const handleQuickLogSubmit = async () => {
                             <button
                               title="編輯標籤"
                               onClick={() => handleOpenEditTags(video)}
-                              className="p-1 px-2 border border-slate-200 hover:border-slate-350 hover:bg-slate-50 text-slate-650 rounded-xl text-[10px] font-extrabold flex items-center gap-1 cursor-pointer duration-150"
+                              className="flex items-center justify-center gap-1.5 h-8.5 px-3 border border-slate-200 bg-white hover:bg-slate-50 text-slate-600 text-xs font-medium rounded-xl transition-colors"
                             >
-                              <SVGIcon name="ClipboardEdit" className="w-3 h-3 text-indigo-600" />
+                              <SVGIcon name="ClipboardEdit" className="w-3.5 h-7 text-indigo-600" />
                               <span>編輯</span>
                             </button>
 
@@ -1479,9 +1479,9 @@ const handleQuickLogSubmit = async () => {
                                 setQuickDuration(video.latestDuration || 15);
 				setQuickDate(new Date().toISOString().split("T")[0]);
                               }}
-                              className="flex items-center gap-1.5 px-2.5 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-[10px] font-bold duration-150 cursor-pointer shrink-0 shadow-md shadow-indigo-100"
+                              className="flex items-center justify-center gap-1.5 h-8.5 px-3 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-medium rounded-xl transition-colors shadow-xs"
                             >
-                              <SVGIcon name="Plus" className="w-3.5 h-3.5 text-indigo-100" />
+                              <SVGIcon name="Plus" className="w-3 h-7 text-indigo-100" />
                               <span>再次上課</span>
                             </button>
                           </div>
