@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>皮拉提斯訓練紀錄 - Standalone PWA</title>
+    <title>皮拉提斯訓練紀錄</title>
     
     <!-- PWA Meta Tags & Manifest -->
     <meta name="theme-color" content="#4f46e5" />
@@ -605,7 +605,7 @@
                   <div className="p-2 bg-indigo-50 text-indigo-600 rounded-xl">
                     <SVGIcon name="Sparkles" className="w-4 h-4 text-indigo-600" />
                   </div>
-                  <h2 className="text-sm font-bold text-slate-800 tracking-wide">我的皮拉提斯打卡牆</h2>
+                  <h2 className="text-sm font-bold text-slate-800 tracking-wide">打卡牆</h2>
                 </div>
                 
                 <div className="grid grid-cols-3 gap-3">
@@ -772,7 +772,7 @@
                   {/* Fields conditionally based on selection */}
                   {workoutType === "video" ? (
                     <div className="space-y-1.5">
-                      <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">輸入影片網址</label>
+                      <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">影片網址</label>
                       <div className="flex gap-2">
                         <div className="relative flex-1">
                           <input
@@ -894,8 +894,8 @@
               <div className="space-y-3">
                 <div className="flex justify-between items-center">
                   <h4 className="text-sm font-bold text-slate-800 font-sans flex items-center gap-1.5">
-                    <span>{parseInt(selectedDate.split("-")[1])}月{parseInt(selectedDate.split("-")[2])}日 的訓練牆</span>
-                    <span className="text-xs text-slate-400 font-normal">({selectedDateLogs.length} 筆)</span>
+                    <span>{parseInt(selectedDate.split("-")[0])}年{parseInt(selectedDate.split("-")[1])}月{parseInt(selectedDate.split("-")[2])}日</span>
+                    <span className="text-xs text-slate-400 font-normal">（{selectedDateLogs.length} 筆）</span>
                   </h4>
 
                   <button
@@ -912,10 +912,7 @@
                     <div className="flex justify-center">
                       <SVGIcon name="Video" className="w-8 h-8 text-slate-350" />
                     </div>
-                    <p className="text-xs font-bold text-slate-500">此日期尚無任何訓練打卡紀錄</p>
-                    <p className="text-[11px] text-slate-400 leading-normal max-w-xs mx-auto">
-                      點選月曆中具有圓點的日期以查看歷史課表，新訓練請直接按右上「新增」打卡！
-                    </p>
+                    <p className="text-xs font-bold text-slate-500">無打卡紀錄</p>
                   </div>
                 ) : (
                   <div className="space-y-3">
@@ -1256,7 +1253,7 @@
                     type="text"
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    placeholder="輸入關鍵字以搜尋課程標題或分類..."
+                    placeholder="輸入關鍵字"
                     className="w-full pl-9 pr-3 py-2 bg-white border border-slate-200 rounded-xl text-xs focus:ring-1.5 focus:ring-indigo-400/50 focus:outline-none"
                   />
                 </div>
@@ -1272,8 +1269,8 @@
                       onChange={(e) => setSortBy(e.target.value)}
                       className="w-full pl-8 pr-3 py-2 bg-white border border-slate-200 rounded-xl text-xs text-slate-700 font-bold focus:outline-none focus:ring-1.5 focus:ring-indigo-400/50"
                     >
-                      <option value="latest">依日期排序 (最新在前面)</option>
-                      <option value="count">依頻率排序 (上課次數最多)</option>
+                      <option value="latest">依日期排序</option>
+                      <option value="count">依頻率排序</option>
                     </select>
                   </div>
                 </div>
@@ -1306,8 +1303,7 @@
                 <div className="flex justify-center">
                   <SVGIcon name="Video" className="w-10 h-10 text-slate-350" />
                 </div>
-                <h5 className="font-bold text-slate-600">無符合篩選的課程項目</h5>
-                <p className="text-xs text-slate-400 leading-normal">您可以嘗試清空關鍵字、改選其他分類標籤或是回到打卡頁面加入影片打卡。</p>
+                <h5 className="font-bold text-slate-600">無符合課程</h5>
               </div>
             ) : (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -1670,9 +1666,9 @@
                         ? "bg-white text-indigo-600 shadow-xs scale-102 border border-white/80"
                         : "text-slate-500 hover:text-slate-800"
                     }`}
-                    title="加簽打卡牆"
+                    title="打卡牆"
                   >
-                    <SVGIcon name="CalendarDays" className="w-4 h-4" />
+                    <SVGIcon name="CalendarDays" className="w-10 h-4" />
                   </button>
                   <button
                     onClick={() => setActiveTab("videos")}
@@ -1681,9 +1677,9 @@
                         ? "bg-white text-indigo-600 shadow-xs scale-102 border border-white/80"
                         : "text-slate-500 hover:text-slate-800"
                     }`}
-                    title="影片影片庫"
+                    title="課程庫"
                   >
-                    <SVGIcon name="Video" className="w-4 h-4" />
+                    <SVGIcon name="Video" className="w-10 h-4" />
                   </button>
                 </div>
               </div>
