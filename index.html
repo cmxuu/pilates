@@ -1517,7 +1517,7 @@ const handleQuickLogSubmit = async () => {
     type="date"
     value={quickDate}
     onChange={(e) => setQuickDate(e.target.value)}
-    className="w-full h-10 px-3 py-2 border border-slate-200 bg-slate-50/50 rounded-xl text-xs font-sans block box-border text-left focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+    className="w-full h-10 px-3 border border-slate-200 bg-slate-50/50 rounded-xl text-xs font-sans text-left appearance-none focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
   />
 </div>
 
@@ -1529,11 +1529,9 @@ const handleQuickLogSubmit = async () => {
     inputMode="numeric"
     pattern="[0-9]*"
     min="1"
-    /* 這裡維持手機網頁對齊的完美樣式 */
-    className="w-full h-10 px-3 py-2 border border-slate-200 bg-slate-50/50 rounded-xl text-xs font-sans block box-border focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
     value={quickDuration}
-    // ✅ 允許直接刪除到空字串，不會自動補 0 擋你輸入
     onChange={(e) => setQuickDuration(e.target.value)}
+    className="w-full h-10 px-3 border border-slate-200 bg-slate-50/50 rounded-xl text-xs font-sans text-left appearance-none focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
   />
 </div>
 
