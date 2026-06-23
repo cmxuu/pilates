@@ -1099,6 +1099,7 @@
         const [quickDuration, setQuickDuration] = useState(15);
         const [quickNotes, setQuickNotes] = useState("");
         const [isSubmitting, setIsSubmitting] = useState(false);
+	const [quickDate, setQuickDate] = useState(() => new Date().toISOString().split("T")[0]);
 
         const [editingTagsVideo, setEditingTagsVideo] = useState(null);
         const [editingVideoTitle, setEditingVideoTitle] = useState("");
@@ -1183,27 +1184,42 @@
           return [...pinned, ...unpinned];
         }, [uniqueVideos, searchQuery, selectedTag, sortBy, pinnedUrls]);
 
-        const handleQuickLogSubmit = async () => {
-          if (!quickLogVideo) return;
-          setIsSubmitting(true);
-          const todayStr = new Date().toISOString().split("T")[0];
-
-          setTimeout(async () => {
-            await onQuickCheckIn({
-              date: todayStr,
-              videoUrl: quickLogVideo.videoUrl,
-              videoTitle: quickLogVideo.videoTitle,
-              videoThumbnail: quickLogVideo.videoThumbnail,
-              tags: quickLogVideo.tags,
-              duration: quickDuration,
-              notes: quickNotes.trim() || undefined,
-            });
-            setIsSubmitting(false);
-            setQuickLogVideo(null);
-            setQuickNotes("");
-            setQuickDuration(15);
-          }, 200);
-        };
+const handleQuickLogSubmit = async () => {
+  if (!quickLogVideo) return;
+  
+  // 1. 先啟動儲存中狀態
+  setIsSubmitting(true);
+  
+  try {
+    // 安全檢查：確保日期有值，若空值則預設今天
+    const targetDate = quickDate || new Date().toISOString().split("T")[0];
+    
+    // 2. 觸發新增資料庫（localStorage）
+    await onQuickCheckIn({
+      date: targetDate,
+      videoUrl: quickLogVideo.videoUrl,
+      videoTitle: quickLogVideo.videoTitle,
+      videoThumbnail: quickLogVideo.videoThumbnail,
+      tags: quickLogVideo.tags || [],
+      duration: Number(quickDuration) || 15, // ✨ 關鍵：強制轉成數字，防止字串相加導致系統崩潰
+      notes: quickNotes.trim() || undefined,
+    });
+    
+    // 3. 成功寫入資料庫後，才重置所有輸入欄位並關閉視窗
+    setQuickLogVideo(null);
+    setQuickNotes("");
+    setQuickDuration(15);
+    setQuickDate(new Date().toISOString().split("T")[0]);
+    
+  } catch (error) {
+    // 如果中間有任何閃失，會在瀏覽器主控台（F12）跳出錯誤原因
+    console.error("快速打卡儲存失敗:", error);
+    alert("儲存失敗，請打開瀏覽器主控台檢查錯誤原因。");
+  } finally {
+    // 4. ✨ 最關鍵：無論成功還是失敗，最後一定會把「正在儲存」解除鎖定！
+    setIsSubmitting(false);
+  }
+};
 
         const handleSaveTags = () => {
           if (!editingTagsVideo) return;
@@ -1461,6 +1477,7 @@
                               onClick={() => {
                                 setQuickLogVideo(video);
                                 setQuickDuration(video.latestDuration || 15);
+				setQuickDate(new Date().toISOString().split("T")[0]);
                               }}
                               className="flex items-center gap-1.5 px-2.5 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-[10px] font-bold duration-150 cursor-pointer shrink-0 shadow-md shadow-indigo-100"
                             >
@@ -1493,6 +1510,16 @@
                     <p className="text-xs font-bold text-slate-850 leading-tight truncate-3">{quickLogVideo.videoTitle}</p>
                   </div>
 
+		  <div className="space-y-1">
+		    <label className="text-[10px] font-bold text-slate-500 uppercase block">打卡日期</label>
+		    <input
+		      type="date"
+		      value={quickDate}
+		      onChange={(e) => setQuickDate(e.target.value)}
+		      className="w-full px-3 py-2 border bg-slate-50/50 rounded-xl text-xs font-sans"
+		    />
+		  </div>
+
                   <div className="space-y-1">
                     <label className="text-[10px] font-bold text-slate-500 uppercase block">練習時長 (分鐘)</label>
                     <input
@@ -1512,7 +1539,7 @@
                       disabled={isSubmitting}
                       className="flex-grow py-2 bg-indigo-600 text-white rounded-xl font-bold text-xs hover:bg-indigo-700"
                     >
-                      {isSubmitting ? "正在儲存..." : "快速再次打卡"}
+                      {isSubmitting ? "正在儲存..." : "再次上課"}
                     </button>
                   </div>
                 </div>
