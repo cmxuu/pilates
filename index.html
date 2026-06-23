@@ -1,0 +1,1730 @@
+<!doctype html>
+<html lang="zh-TW">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>皮拉提斯訓練紀錄 - Standalone PWA</title>
+    
+    <!-- PWA Meta Tags & Manifest -->
+    <meta name="theme-color" content="#4f46e5" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="apple-mobile-web-app-title" content="皮拉提斯訓練" />
+    <link rel="apple-touch-icon" href="https://images.unsplash.com/photo-1544367567-0f2fcb009e0b?auto=format&fit=crop&q=80&w=192" />
+    
+    <!-- Inline Manifest to make it completely self-contained and PWA Installable -->
+    <link rel="manifest" href='data:application/manifest+json,{"name":"皮拉提斯訓練紀錄","short_name":"皮拉提斯","theme_color":"#4f46e5","background_color":"#f8fafc","display":"standalone","start_url":".","icons":[{"src":"https://images.unsplash.com/photo-1544367567-0f2fcb009e0b?auto=format&fit=crop&q=80&w=192","sizes":"192x192","type":"image/png"}]}' />
+
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;850&display=swap" rel="stylesheet" />
+
+    <!-- CDN Script Assets (React & Babel Transpiler) -->
+    <script src="https://cdn.jsdelivr.net/npm/react@18.3.1/umd/react.production.min.js" crossorigin></script>
+    <script src="https://cdn.jsdelivr.net/npm/react-dom@18.3.1/umd/react-dom.production.min.js" crossorigin></script>
+    <script src="https://cdn.jsdelivr.net/npm/@babel/standalone@7.24.0/babel.min.js" crossorigin></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            fontFamily: {
+              sans: ["Inter", "ui-sans-serif", "system-ui", "-apple-system", "BlinkMacSystemFont", "Segoe UI", "Roboto", "Helvetica Neue", "Arial", "Noto Sans", "sans-serif"],
+            },
+            boxShadow: {
+              '2xs': '0 1px 2px 0 rgba(0, 0, 0, 0.02)',
+              'xs': '0 1px 3px 0 rgba(0, 0, 0, 0.05)',
+            },
+            scale: {
+              '102': '1.02',
+              '103': '1.03',
+            }
+          }
+        }
+      }
+    </script>
+
+    <style>
+      /* Smooth Fade Animation */
+      @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(10px); }
+        to { opacity: 1; transform: translateY(0); }
+      }
+      .animate-fade-in {
+        animation: fadeIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+      }
+      body {
+        -webkit-tap-highlight-color: transparent;
+      }
+    </style>
+  </head>
+  <body class="min-h-screen bg-[#f8fafc] text-slate-800 antialiased selection:bg-indigo-100 selection:text-indigo-800">
+
+    <div id="root"></div>
+
+    <!-- React Application Implementation -->
+    <script type="text/babel" data-presets="react,typescript">
+      const { useState, useEffect, useMemo, useCallback } = React;
+
+      const LOCAL_STORAGE_KEY = "pilates_logs_local";
+      const PIN_STORAGE_KEY = "pinned_pilates_videos";
+
+      // 100% Standalone Offline-ready SVG Icon Component
+      function SVGIcon({ name, className = "w-5 h-5", ...props }) {
+        const icons = {
+          Flower: (
+            <svg className={className} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" {...props}>
+              <path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z" />
+              <path d="M12 22V12" />
+              <path d="m12 12-4 4" />
+              <path d="m12 12 4 4" />
+            </svg>
+          ),
+          CalendarDays: (
+            <svg className={className} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}>
+              <rect width="18" height="18" x="3" y="4" rx="2" ry="2"/>
+              <line x1="16" x2="16" y1="2" y2="6"/>
+              <line x1="8" x2="8" y1="2" y2="6"/>
+              <line x1="3" x2="21" y1="10" y2="10"/>
+              <path d="M8 14h.01"/>
+              <path d="M12 14h.01"/>
+              <path d="M16 14h.01"/>
+              <path d="M8 18h.01"/>
+              <path d="M12 18h.01"/>
+              <path d="M16 18h.01"/>
+            </svg>
+          ),
+          Video: (
+            <svg className={className} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}>
+              <path d="m22 8-6 4 6 4V8Z" />
+              <rect width="14" height="12" x="2" y="6" rx="2" ry="2" />
+            </svg>
+          ),
+          Sparkles: (
+            <svg className={className} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}>
+              <path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z" />
+              <path d="m5 3 1 2.5L8.5 6 6 7 5 9.5 4 7 1.5 6 4 5 5 3Z" opacity="0.6" />
+              <path d="m19 17 1 2.5 2.5.5-2.5 1-1 2.5-1-2.5-2.5-1 2.5-1 1-2.5Z" opacity="0.6" />
+            </svg>
+          ),
+          Clock: (
+            <svg className={className} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}>
+              <circle cx="12" cy="12" r="10" />
+              <polyline points="12 6 12 12 16 14" />
+            </svg>
+          ),
+          Tag: (
+            <svg className={className} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}>
+              <path d="M12.586 3H21v8.414L11.414 21a2 2 0 0 1-2.828 0L3.172 15.586a2 2 0 0 1 0-2.828L12.586 3z" />
+              <line x1="15" x2="15.01" y1="9.01" y2="9.01" />
+            </svg>
+          ),
+          ExternalLink: (
+            <svg className={className} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}>
+              <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
+              <polyline points="15 3 21 3 21 9" />
+              <line x1="10" x2="21" y1="14" y2="3" />
+            </svg>
+          ),
+          Trash2: (
+            <svg className={className} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}>
+              <path d="M3 6h18" />
+              <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6" />
+              <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2" />
+              <line x1="10" x2="10" y1="11" y2="17" />
+              <line x1="14" x2="14" y1="11" y2="17" />
+            </svg>
+          ),
+          FileEdit: (
+            <svg className={className} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}>
+              <path d="M12 20h9" />
+              <path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z" />
+            </svg>
+          ),
+          FileText: (
+            <svg className={className} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}>
+              <path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z" />
+              <path d="M14 2v4a2 2 0 0 0 2 2h4" />
+              <path d="M10 9H8" />
+              <path d="M16 13H8" />
+              <path d="M16 17H8" />
+            </svg>
+          ),
+          ChevronLeft: (
+            <svg className={className} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}>
+              <polyline points="15 18 9 12 15 6" />
+            </svg>
+          ),
+          ChevronRight: (
+            <svg className={className} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}>
+              <polyline points="9 18 15 12 9 6" />
+            </svg>
+          ),
+          Search: (
+            <svg className={className} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}>
+              <circle cx="11" cy="11" r="8" />
+              <path d="m21 21-4.3-4.3" />
+            </svg>
+          ),
+          Zap: (
+            <svg className={className} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="25" strokeLinecap="round" strokeLinejoin="round" {...props}>
+              <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
+            </svg>
+          ),
+          Pin: (
+            <svg className={className} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}>
+              <line x1="12" x2="12" y1="17" y2="22" />
+              <path d="M5 17h14v-1.76a2 2 0 0 0-.44-1.24l-2.32-2.9A4 4 0 0 1 15 8.58V5a2 2 0 0 0-2-2h-2a2 2 0 0 0-2 2v3.58a4 4 0 0 1-1.24 2.52l-2.32 2.9a2 2 0 0 0-.44 1.24Z" />
+            </svg>
+          ),
+          Info: (
+            <svg className={className} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}>
+              <circle cx="12" cy="12" r="10" />
+              <path d="M12 16v-4" />
+              <path d="M12 8h.01" />
+            </svg>
+          ),
+          Plus: (
+            <svg className={className} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}>
+              <path d="M5 12h14" />
+              <path d="M12 5v14" />
+            </svg>
+          ),
+          Check: (
+            <svg className={className} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" {...props}>
+              <polyline points="20 6 9 17 4 12" />
+            </svg>
+          ),
+          CheckCircle2: (
+            <svg className={className} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}>
+              <circle cx="12" cy="12" r="10" />
+              <path d="m9 12 2 2 4-4" />
+            </svg>
+          ),
+          BookmarkCheck: (
+            <svg className={className} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}>
+              <path d="m19 21-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2Z" />
+              <polyline points="9 10 11 12 15 8" />
+            </svg>
+          ),
+          X: (
+            <svg className={className} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}>
+              <path d="M18 6 6 18" />
+              <path d="m6 6 12 12" />
+            </svg>
+          ),
+          Dumbbell: (
+            <svg className={className} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}>
+              <path d="m6.5 6.5 11 11" />
+              <path d="m21 21-1-1" />
+              <path d="m3 3 1 1" />
+              <path d="m18 22 4-4" />
+              <path d="m2 6 4-4" />
+              <path d="m3 10 7-7" />
+              <path d="m14 21 7-7" />
+              <path d="M6.5 12.5 12.5 6.5" />
+              <path d="m11.5 17.5 6-6" />
+            </svg>
+          ),
+          ArrowUpDown: (
+            <svg className={className} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}>
+              <path d="m3 16 4 4 4-4" />
+              <path d="M7 20V4" />
+              <path d="m21 8-4-4-4 4" />
+              <path d="M17 4v16" />
+            </svg>
+          ),
+          Calendar: (
+            <svg className={className} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}>
+              <path d="M8 2v4"/>
+              <path d="M16 2v4"/>
+              <rect width="18" height="18" x="3" y="4" rx="2"/>
+              <path d="M3 10h18"/>
+            </svg>
+          ),
+          ClipboardEdit: (
+            <svg className={className} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}>
+              <rect width="8" height="4" x="8" y="2" rx="1" ry="1"/>
+              <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/>
+              <path d="m9 14 2 2 4-4"/>
+            </svg>
+          ),
+          Play: (
+            <svg className={className} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}>
+              <polygon points="6 3 20 12 6 21 6 3"/>
+            </svg>
+          ),
+          TrendingUp: (
+            <svg className={className} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}>
+              <polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/>
+              <polyline points="16 7 22 7 22 13"/>
+            </svg>
+          )
+        };
+        return icons[name] || icons.Flower;
+      }
+
+      // Utility to clean thumbnails
+      const getCleanThumbnail = (url) => {
+        if (!url) return "";
+        if (url.includes("ytimg.com") || url.includes("youtube.com")) {
+          return url.replace("hqdefault.jpg", "mqdefault.jpg");
+        }
+        return url;
+      };
+
+      // Helper to find cached video log
+      const findCachedVideo = (url, logsList) => {
+        if (!url) return null;
+        return logsList.find((l) => l.videoUrl === url);
+      };
+
+      // Client-side instant video analysis for 100% offline compatibility
+      const extractVideoMetaClient = (url) => {
+        let videoId = "";
+        let thumbnail = "https://images.unsplash.com/photo-1544367567-0f2fcb009e0b?auto=format&fit=crop&q=80&w=600";
+        let title = "自主練習皮拉提斯課程";
+        let tags = ["核心"];
+
+        try {
+          // Youtube Regex
+          const ytRegex = /(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^"&?\/\s]{11})/i;
+          const ytMatch = url.match(ytRegex);
+          if (ytMatch) {
+            videoId = ytMatch[1];
+            thumbnail = `https://img.youtube.com/vi/${videoId}/mqdefault.jpg`;
+            title = "YouTube 皮拉提斯課程";
+          } else if (url.includes("vimeo.com")) {
+            title = "Vimeo 運動課程影片";
+            thumbnail = "https://images.unsplash.com/photo-1518611012118-696072aa579a?auto=format&fit=crop&q=80&w=600";
+          }
+        } catch (e) {
+          console.error(e);
+        }
+        return { title, thumbnail, tags };
+      };
+
+      // CheckInPage Sub-component
+      function CheckInPage({ logs, onAddLog, onDeleteLog, onUpdateLog, selectedDate, onSelectDate }) {
+        const [workoutType, setWorkoutType] = useState("video");
+        const [videoUrl, setVideoUrl] = useState("");
+        const [isFetchingInfo, setIsFetchingInfo] = useState(false);
+        const [fetchError, setFetchError] = useState(null);
+        
+        const [parsedMeta, setParsedMeta] = useState(null);
+        const [customTitle, setCustomTitle] = useState("");
+        const [duration, setDuration] = useState(15);
+        const [notes, setNotes] = useState("");
+        const [selectedTags, setSelectedTags] = useState([]);
+
+        // Dialog edit/delete locks
+        const [logToDelete, setLogToDelete] = useState(null);
+        const [logToEditDuration, setLogToEditDuration] = useState(null);
+        const [editingDuration, setEditingDuration] = useState(15);
+
+        // Date Picker bounds
+        const [currentYear, setCurrentYear] = useState(() => new Date().getFullYear());
+        const [currentMonth, setCurrentMonth] = useState(() => new Date().getMonth());
+
+        const [loggingProgress, setLoggingProgress] = useState(false);
+        const [showAddForm, setShowAddForm] = useState(false);
+        const [reformerPreset, setReformerPreset] = useState("https://pilates.app/reformer-class-pilates");
+
+        // Dynamically extract physical courses from logs, newest first
+        const physicalCourses = useMemo(() => {
+          const map = new Map();
+
+          // Seed default courses
+          map.set("https://pilates.app/reformer-class-pilates", {
+            url: "https://pilates.app/reformer-class-pilates",
+            title: "器械皮拉提斯",
+            thumbnail: "https://images.unsplash.com/photo-1544367567-0f2fcb009e0b?auto=format&fit=crop&q=80&w=600",
+            tags: ["器械", "實體"],
+            duration: 60,
+            latestTimestamp: 0,
+          });
+
+          map.set("https://pilates.app/reformer-class-sculpture", {
+            url: "https://pilates.app/reformer-class-sculpture",
+            title: "全方位體態雕塑",
+            thumbnail: "https://images.unsplash.com/photo-1518611012118-696072aa579a?auto=format&fit=crop&q=80&w=600",
+            tags: ["器械", "實體"],
+            duration: 60,
+            latestTimestamp: 0,
+          });
+
+          logs.forEach((log) => {
+            const isPhysical = (log.tags || []).includes("實體") || log.videoUrl.includes("reformer");
+            if (isPhysical && log.videoUrl) {
+              const existing = map.get(log.videoUrl);
+              if (!existing || log.createdAt > existing.latestTimestamp) {
+                map.set(log.videoUrl, {
+                  url: log.videoUrl,
+                  title: log.videoTitle,
+                  thumbnail: log.videoThumbnail || "https://images.unsplash.com/photo-1544367567-0f2fcb009e0b?auto=format&fit=crop&q=80&w=600",
+                  tags: log.tags || ["實體"],
+                  duration: log.duration || 60,
+                  latestTimestamp: log.createdAt || 0,
+                });
+              }
+            }
+          });
+
+          return Array.from(map.values()).sort((a, b) => b.latestTimestamp - a.latestTimestamp);
+        }, [logs]);
+
+        // Preset state initialization
+        useEffect(() => {
+          if (workoutType === "reformer") {
+            let targetUrl = "https://pilates.app/reformer-class-pilates";
+            let fallbackTitle = "器械皮拉提斯";
+            let fallbackThumbnail = "https://images.unsplash.com/photo-1544367567-0f2fcb009e0b?auto=format&fit=crop&q=80&w=600";
+            let fallbackTags = ["器械", "實體"];
+            let fallbackDuration = 60;
+
+            if (reformerPreset === "custom") {
+              targetUrl = "https://pilates.app/reformer-class-custom";
+              fallbackTitle = "自訂身體訓練課程";
+              fallbackThumbnail = "https://images.unsplash.com/photo-1544367567-0f2fcb009e0b?auto=format&fit=crop&q=80&w=600";
+              fallbackTags = ["實體"];
+              fallbackDuration = 60;
+            } else {
+              const presetCourse = physicalCourses.find(c => c.url === reformerPreset);
+              if (presetCourse) {
+                targetUrl = presetCourse.url;
+                fallbackTitle = presetCourse.title;
+                fallbackThumbnail = presetCourse.thumbnail;
+                fallbackTags = presetCourse.tags;
+                fallbackDuration = presetCourse.duration;
+              }
+            }
+
+            const cached = findCachedVideo(targetUrl, logs);
+            if (cached) {
+              setVideoUrl(cached.videoUrl);
+              setParsedMeta({
+                title: cached.videoTitle,
+                thumbnail: cached.videoThumbnail || fallbackThumbnail,
+                tags: cached.tags || fallbackTags,
+              });
+              setCustomTitle(cached.videoTitle);
+              setDuration(cached.duration || fallbackDuration);
+              setSelectedTags(cached.tags || fallbackTags);
+            } else {
+              setVideoUrl(targetUrl);
+              setParsedMeta({
+                title: fallbackTitle,
+                thumbnail: fallbackThumbnail,
+                tags: fallbackTags,
+              });
+              setCustomTitle(reformerPreset === "custom" ? "" : fallbackTitle);
+              setDuration(fallbackDuration);
+              setSelectedTags(fallbackTags);
+            }
+          } else {
+            setVideoUrl("");
+            setParsedMeta(null);
+            setCustomTitle("");
+            setDuration(15);
+            setSelectedTags([]);
+          }
+        }, [workoutType, reformerPreset, logs, physicalCourses]);
+
+        useEffect(() => {
+          const [year, month] = selectedDate.split("-").map(Number);
+          if (year && month !== undefined) {
+            setCurrentYear(year);
+            setCurrentMonth(month - 1);
+          }
+        }, [selectedDate]);
+
+        const handleFetchMetadata = () => {
+          if (!videoUrl || !videoUrl.trim()) return;
+          setIsFetchingInfo(true);
+          setFetchError(null);
+
+          setTimeout(() => {
+            const cached = findCachedVideo(videoUrl.trim(), logs);
+            if (cached) {
+              setParsedMeta({
+                title: cached.videoTitle,
+                thumbnail: cached.videoThumbnail,
+                tags: cached.tags || ["核心"],
+              });
+              setCustomTitle(cached.videoTitle);
+              setDuration(cached.duration || 15);
+              setSelectedTags(cached.tags || ["核心"]);
+              setFetchError("✨ 已從歷史紀錄自動提取本影片資料");
+            } else {
+              const extracted = extractVideoMetaClient(videoUrl.trim());
+              setParsedMeta(extracted);
+              setCustomTitle(extracted.title);
+              setDuration(15);
+              setSelectedTags(extracted.tags);
+            }
+            setIsFetchingInfo(false);
+          }, 350);
+        };
+
+        const handleToggleTag = (tag) => {
+          if (selectedTags.includes(tag)) {
+            setSelectedTags(selectedTags.filter((t) => t !== tag));
+          } else {
+            setSelectedTags([...selectedTags, tag]);
+          }
+        };
+
+        const handleCreateCheckIn = async () => {
+          if (!parsedMeta) return;
+          setLoggingProgress(true);
+
+          let finalUrl = videoUrl;
+          const trimTitle = customTitle.trim() || parsedMeta.title;
+
+          if (workoutType === "reformer") {
+            if (reformerPreset === "custom") {
+              finalUrl = "https://pilates.app/reformer-class-custom-" + encodeURIComponent(trimTitle || "untitled");
+            } else {
+              finalUrl = reformerPreset;
+            }
+          }
+
+          setTimeout(async () => {
+            const existingCourse = logs.find(l => l.videoUrl === finalUrl);
+            const finalTags = (existingCourse && existingCourse.tags && existingCourse.tags.length > 0)
+              ? existingCourse.tags
+              : (workoutType === "reformer" ? ["實體"] : ["線上"]);
+
+            await onAddLog({
+              date: selectedDate,
+              videoUrl: finalUrl,
+              videoTitle: trimTitle || (workoutType === "reformer" ? "未命名實體課" : "未命名排課"),
+              videoThumbnail: parsedMeta.thumbnail,
+              tags: finalTags,
+              notes: undefined,
+              duration: duration || 15,
+            });
+
+            setVideoUrl("");
+            setParsedMeta(null);
+            setDuration(15);
+            setShowAddForm(false);
+            setLoggingProgress(false);
+          }, 200);
+        };
+
+        // Date calculation structures
+        const checkedDates = useMemo(() => {
+          const dates = new Set();
+          logs.forEach((log) => dates.add(log.date));
+          return dates;
+        }, [logs]);
+
+        const stats = useMemo(() => {
+          let currentStreak = 0;
+          const todayStr = new Date().toISOString().split("T")[0];
+          const yesterdayStr = new Date(Date.now() - 86400000).toISOString().split("T")[0];
+
+          if (checkedDates.has(todayStr) || checkedDates.has(yesterdayStr)) {
+            let tempDate = checkedDates.has(todayStr) ? new Date(todayStr) : new Date(yesterdayStr);
+            while (true) {
+              const formattedDate = tempDate.toISOString().split("T")[0];
+              if (checkedDates.has(formattedDate)) {
+                currentStreak++;
+                tempDate.setDate(tempDate.getDate() - 1);
+              } else {
+                break;
+              }
+            }
+          }
+
+          const monthPrefix = `${currentYear}-${(currentMonth + 1) < 10 ? "0" + (currentMonth + 1) : currentMonth + 1}`;
+          const thisMonthWorkouts = logs.filter((log) => log.date.startsWith(monthPrefix)).length;
+
+          return {
+            currentStreak,
+            thisMonthWorkouts,
+            allTimeDays: checkedDates.size,
+          };
+        }, [checkedDates, logs, currentYear, currentMonth]);
+
+        const selectedDateLogs = useMemo(() => {
+          return logs.filter((log) => log.date === selectedDate);
+        }, [logs, selectedDate]);
+
+        const calendarDays = useMemo(() => {
+          const firstDayIndex = new Date(currentYear, currentMonth, 1).getDay();
+          const totalDays = new Date(currentYear, currentMonth + 1, 0).getDate();
+          const prevMonthTotalDays = new Date(currentYear, currentMonth, 0).getDate();
+
+          const daysList = [];
+          for (let i = firstDayIndex - 1; i >= 0; i--) {
+            const day = prevMonthTotalDays - i;
+            const m = currentMonth === 0 ? 12 : currentMonth;
+            const y = currentMonth === 0 ? currentYear - 1 : currentYear;
+            daysList.push({
+              day,
+              dateString: `${y}-${m < 10 ? '0' + m : m}-${day < 10 ? '0' + day : day}`,
+              isCurrentMonth: false,
+            });
+          }
+
+          for (let i = 1; i <= totalDays; i++) {
+            const m = currentMonth + 1;
+            daysList.push({
+              day: i,
+              dateString: `${currentYear}-${m < 10 ? '0' + m : m}-${i < 10 ? '0' + i : i}`,
+              isCurrentMonth: true,
+            });
+          }
+
+          const remainingSlots = 42 - daysList.length;
+          for (let i = 1; i <= remainingSlots; i++) {
+            const m = currentMonth === 11 ? 1 : currentMonth + 2;
+            const y = currentMonth === 11 ? currentYear + 1 : currentYear;
+            daysList.push({
+              day: i,
+              dateString: `${y}-${m < 10 ? '0' + m : m}-${i < 10 ? '0' + i : i}`,
+              isCurrentMonth: false,
+            });
+          }
+
+          return daysList;
+        }, [currentYear, currentMonth]);
+
+        return (
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+            {/* Left Column Calendar */}
+            <div className="lg:col-span-7 space-y-6">
+              
+              {/* Dashboard Wall */}
+              <div className="bg-white/40 backdrop-blur-xl border border-white/60 rounded-3xl p-5 shadow-xs">
+                <div className="flex items-center gap-2 mb-4">
+                  <div className="p-2 bg-indigo-50 text-indigo-600 rounded-xl">
+                    <SVGIcon name="Sparkles" className="w-4 h-4 text-indigo-600" />
+                  </div>
+                  <h2 className="text-sm font-bold text-slate-800 tracking-wide">我的皮拉提斯打卡牆</h2>
+                </div>
+                
+                <div className="grid grid-cols-3 gap-3">
+                  <div className="bg-white/60 border border-white/80 rounded-2xl p-4 text-center">
+                    <p className="text-xs text-slate-400 font-bold mb-1">連續打卡</p>
+                    <div className="flex items-baseline justify-center gap-0.5">
+                      <span className="text-2xl font-extrabold text-indigo-600">{stats.currentStreak}</span>
+                      <span className="text-[10px] text-slate-500 font-medium">天</span>
+                    </div>
+                  </div>
+
+                  <div className="bg-white/60 border border-white/80 rounded-2xl p-4 text-center">
+                    <p className="text-xs text-slate-400 font-bold mb-1">本月練習</p>
+                    <div className="flex items-baseline justify-center gap-0.5">
+                      <span className="text-2xl font-extrabold text-slate-700">{stats.thisMonthWorkouts}</span>
+                      <span className="text-[10px] text-slate-500 font-medium">次</span>
+                    </div>
+                  </div>
+
+                  <div className="bg-white/60 border border-white/80 rounded-2xl p-4 text-center">
+                    <p className="text-xs text-slate-400 font-bold mb-1">累計打卡</p>
+                    <div className="flex items-baseline justify-center gap-0.5">
+                      <span className="text-2xl font-extrabold text-slate-700">{stats.allTimeDays}</span>
+                      <span className="text-[10px] text-slate-500 font-medium">天</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Dynamic Calendar Grid */}
+              <div className="bg-white/50 backdrop-blur-xl border border-white/80 rounded-[2rem] shadow-xs p-6">
+                <div className="flex justify-between items-center mb-6">
+                  <h2 className="text-lg font-bold text-slate-900">
+                    {currentYear} 年 {currentMonth + 1} 月
+                  </h2>
+                  <div className="flex items-center gap-1">
+                    <button
+                      onClick={() => {
+                        if (currentMonth === 0) {
+                          setCurrentMonth(11);
+                          setCurrentYear(y => y - 1);
+                        } else {
+                          setCurrentMonth(m => m - 1);
+                        }
+                      }}
+                      className="p-2 border border-white/60 bg-white/40 rounded-xl hover:bg-white/70 text-slate-600 transition"
+                    >
+                      <SVGIcon name="ChevronLeft" className="w-4 h-4" />
+                    </button>
+                    <button
+                      onClick={() => {
+                        if (currentMonth === 11) {
+                          setCurrentMonth(0);
+                          setCurrentYear(y => y + 1);
+                        } else {
+                          setCurrentMonth(m => m + 1);
+                        }
+                      }}
+                      className="p-2 border border-white/60 bg-white/40 rounded-xl hover:bg-white/70 text-slate-600 transition"
+                    >
+                      <SVGIcon name="ChevronRight" className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-7 gap-1 text-center mb-2">
+                  {["日", "一", "二", "三", "四", "五", "六"].map((w, idx) => (
+                    <span
+                      key={w}
+                      className={`text-[11px] font-bold py-1.5 ${
+                        idx === 0 || idx === 6 ? "text-rose-400/80" : "text-slate-500"
+                      }`}
+                    >
+                      {w}
+                    </span>
+                  ))}
+                </div>
+
+                <div className="grid grid-cols-7 gap-y-2 gap-x-1.5">
+                  {calendarDays.map((item, idx) => {
+                    const isChecked = checkedDates.has(item.dateString);
+                    const isSelected = selectedDate === item.dateString;
+                    const isToday = new Date().toISOString().split("T")[0] === item.dateString;
+
+                    return (
+                      <button
+                        key={idx}
+                        onClick={() => onSelectDate(item.dateString)}
+                        className={`relative py-3.5 rounded-2xl flex flex-col items-center justify-center transition cursor-pointer text-xs font-bold ${
+                          isSelected
+                            ? "bg-indigo-600 text-white shadow-lg shadow-indigo-100 scale-103"
+                            : isToday
+                            ? "bg-indigo-50/80 text-indigo-700 hover:bg-indigo-150/80 border border-indigo-200/40"
+                            : item.isCurrentMonth
+                            ? "text-slate-800 hover:bg-white/65"
+                            : "text-slate-350 hover:bg-white/40"
+                        }`}
+                      >
+                        <span className="text-[13px]">{item.day}</span>
+                        {isChecked && (
+                          <span
+                            className={`absolute bottom-1 w-1.5 h-1.5 rounded-full ${
+                              isSelected ? "bg-white" : "bg-indigo-600"
+                            }`}
+                          />
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+
+            {/* Right Column Check-In Form and Logs */}
+            <div className="lg:col-span-5 space-y-6">
+              
+              {/* Expandable Add form */}
+              {showAddForm && (
+                <div className="bg-white/55 backdrop-blur-md border border-white/80 rounded-3xl p-5 space-y-4 shadow-xs animate-fade-in">
+                  <div className="flex justify-between items-center border-b border-slate-100 pb-2.5">
+                    <span className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
+                      <SVGIcon name="BookmarkCheck" className="w-4 h-4 text-indigo-500" />
+                      <span>新增訓練打卡</span>
+                    </span>
+                    <button
+                      onClick={() => {
+                        setShowAddForm(false);
+                        setParsedMeta(null);
+                        setVideoUrl("");
+                      }}
+                      className="text-slate-400 hover:text-slate-600 p-1"
+                    >
+                      ✕
+                    </button>
+                  </div>
+
+                  {/* Workout Type Selector */}
+                  <div className="space-y-1.5">
+                    <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">訓練方式</label>
+                    <div className="bg-white/40 border border-white/80 p-0.5 rounded-xl flex">
+                      <button
+                        type="button"
+                        onClick={() => setWorkoutType("video")}
+                        className={`flex-1 py-1.5 text-xs font-bold rounded-lg transition-all flex items-center justify-center gap-1.5 ${
+                          workoutType === "video" ? "bg-white text-indigo-600 shadow-xs" : "text-slate-500 hover:text-slate-800"
+                        }`}
+                      >
+                        <SVGIcon name="Video" className="w-3.5 h-3.5" />
+                        <span>線上影片</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setWorkoutType("reformer")}
+                        className={`flex-1 py-1.5 text-xs font-bold rounded-lg transition-all flex items-center justify-center gap-1.5 ${
+                          workoutType === "reformer" ? "bg-white text-indigo-600 shadow-xs" : "text-slate-500 hover:text-slate-800"
+                        }`}
+                      >
+                        <SVGIcon name="Sparkles" className="w-3.5 h-3.5 text-indigo-600" />
+                        <span>實體課程</span>
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Fields conditionally based on selection */}
+                  {workoutType === "video" ? (
+                    <div className="space-y-1.5">
+                      <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">輸入影片網址</label>
+                      <div className="flex gap-2">
+                        <div className="relative flex-1">
+                          <input
+                            type="text"
+                            value={videoUrl}
+                            onChange={(e) => setVideoUrl(e.target.value)}
+                            placeholder="Youtube 或 Vimeo 網址..."
+                            className="w-full pl-3 pr-8 py-2 bg-white/50 border border-white/80 rounded-xl text-xs text-slate-800 focus:outline-none focus:ring-1.5 focus:ring-indigo-400/.5"
+                          />
+                          {videoUrl && (
+                            <button onClick={() => setVideoUrl("")} className="absolute right-2.5 top-2.5 text-slate-400 hover:text-slate-600 text-xs">✕</button>
+                          )}
+                        </div>
+                        <button
+                          type="button"
+                          disabled={isFetchingInfo || !videoUrl.trim()}
+                          onClick={handleFetchMetadata}
+                          className="px-3.5 bg-slate-900 border border-slate-950 rounded-xl text-white text-xs font-bold hover:bg-slate-850 disabled:opacity-40"
+                        >
+                          自動分析
+                        </button>
+                      </div>
+                      {fetchError && (
+                        <p className="text-[10px] text-rose-600 bg-rose-50 border border-rose-100 p-2.5 rounded-lg animate-pulse">{fetchError}</p>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">課程主選單</label>
+                      <select
+                        value={reformerPreset}
+                        onChange={(e) => setReformerPreset(e.target.value)}
+                        className="w-full px-3 py-2 bg-white/50 border border-white/80 rounded-xl text-xs text-slate-800 focus:outline-none"
+                      >
+                        {physicalCourses.map((course) => (
+                          <option key={course.url} value={course.url}>
+                            {course.title}
+                          </option>
+                        ))}
+                        <option value="custom">＋ 自訂自組課程（可自行新增課程名稱）</option>
+                      </select>
+                    </div>
+                  )}
+
+                  {/* Metadata display & customize forms */}
+                  {parsedMeta && (
+                    <div className="space-y-4 pt-2.5 border-t border-slate-100 animate-fade-in">
+                      <div className="flex gap-3 bg-white/75 p-2 border border-white/95 rounded-2xl">
+                        <div className="relative w-28 h-20 overflow-hidden rounded-xl border border-white/85 shrink-0 bg-white">
+                          <img
+                            src={getCleanThumbnail(parsedMeta.thumbnail)}
+                            alt="Preview Thumbnail"
+                            className="w-full h-full object-cover"
+                          />
+                        </div>
+                        <div className="space-y-1 overflow-hidden flex-1">
+                          <span className="text-[9px] font-bold bg-indigo-50 text-indigo-700 px-1.5 py-0.5 rounded uppercase font-sans">
+                            {workoutType === "reformer" ? "實體課堂模式" : "線上連結已載入"}
+                          </span>
+                          <p className="text-xs text-slate-800 font-bold truncate leading-tight">
+                            {customTitle || "請輸入課程名稱"}
+                          </p>
+                          <p className="text-[10px] text-slate-400 truncate">{videoUrl}</p>
+                        </div>
+                      </div>
+
+                      {/* Course Title Field */}
+                      <div className="space-y-1">
+                        <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">課程名稱</label>
+                        <input
+                          type="text"
+                          value={customTitle}
+                          onChange={(e) => setCustomTitle(e.target.value)}
+                          disabled={workoutType === "reformer" && reformerPreset !== "custom"}
+                          placeholder="請輸入課程名稱..."
+                          className="w-full px-3 py-2 border border-slate-200 bg-white/50 rounded-xl text-xs"
+                        />
+                      </div>
+
+                      {/* Duration Field */}
+                      <div className="space-y-1">
+                        <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">訓練時長 (分鐘)</label>
+                        <div className="relative">
+                          <input
+                            type="number"
+                            min={1}
+                            max={180}
+                            value={duration}
+                            onChange={(e) => setDuration(Math.max(1, Number(e.target.value)))}
+                            disabled={workoutType === "reformer" && reformerPreset !== "custom"}
+                            className="w-full pl-3 pr-8 py-2 border border-slate-200 bg-white/50 rounded-xl text-xs font-sans"
+                          />
+                          <span className="absolute right-3 top-2.5 text-[10px] text-slate-400 font-bold font-sans">MINS</span>
+                        </div>
+                      </div>
+
+                      {/* Submit */}
+                      <button
+                        type="button"
+                        disabled={loggingProgress}
+                        onClick={handleCreateCheckIn}
+                        className="w-full py-2.5 bg-slate-950 text-white text-xs font-bold rounded-xl shadow-lg transition hover:bg-slate-850 flex justify-center items-center gap-1.5"
+                      >
+                        {loggingProgress ? (
+                          <div className="w-3.5 h-3.5 border-2 border-indigo-400 border-t-transparent animate-spin rounded-full"></div>
+                        ) : (
+                          <>
+                            <SVGIcon name="CheckCircle2" className="w-3.5 h-3.5 text-indigo-400" />
+                            <span>儲存並確認打卡</span>
+                          </>
+                        )}
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Day logs list */}
+              <div className="space-y-3">
+                <div className="flex justify-between items-center">
+                  <h4 className="text-sm font-bold text-slate-800 font-sans flex items-center gap-1.5">
+                    <span>{parseInt(selectedDate.split("-")[1])}月{parseInt(selectedDate.split("-")[2])}日 的訓練牆</span>
+                    <span className="text-xs text-slate-400 font-normal">({selectedDateLogs.length} 筆)</span>
+                  </h4>
+
+                  <button
+                    onClick={() => setShowAddForm(!showAddForm)}
+                    className="flex items-center gap-1 px-3 py-1.5 bg-slate-950 text-white text-xs font-bold rounded-xl shadow-xs hover:bg-slate-800"
+                  >
+                    <SVGIcon name="Plus" className="w-3.5 h-3.5" />
+                    <span>新增</span>
+                  </button>
+                </div>
+
+                {selectedDateLogs.length === 0 ? (
+                  <div className="bg-white/30 backdrop-blur-xs border border-white/60 border-dashed rounded-3xl p-8 text-center text-slate-400 space-y-2">
+                    <div className="flex justify-center">
+                      <SVGIcon name="Video" className="w-8 h-8 text-slate-350" />
+                    </div>
+                    <p className="text-xs font-bold text-slate-500">此日期尚無任何訓練打卡紀錄</p>
+                    <p className="text-[11px] text-slate-400 leading-normal max-w-xs mx-auto">
+                      點選月曆中具有圓點的日期以查看歷史課表，新訓練請直接按右上「新增」打卡！
+                    </p>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {selectedDateLogs.map((log) => (
+                      <div
+                        key={log.id}
+                        className="bg-white/60 hover:bg-white/70 border border-white/80 rounded-2xl overflow-hidden shadow-2xs hover:shadow-xs transition duration-200 group relative"
+                      >
+                        <div className="flex items-stretch h-[84px] shrink-0">
+                          {/* Left Thumbnail */}
+                          <div className="relative w-32 shrink-0 bg-slate-50 overflow-hidden">
+                            <img
+                              src={getCleanThumbnail(log.videoThumbnail)}
+                              alt="Log Preview"
+                              className="absolute inset-0 w-full h-full object-cover"
+                            />
+                            {log.videoUrl.includes("reformer") ? null : (
+                              <a
+                                href={log.videoUrl}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="absolute inset-0 bg-slate-900/40 opacity-0 group-hover:opacity-100 transition flex items-center justify-center text-white text-[10px] font-bold"
+                              >
+                                <SVGIcon name="ExternalLink" className="w-3.5 h-3.5 mr-0.5" />
+                                播放
+                              </a>
+                            )}
+                          </div>
+
+                          {/* Detail Metadata */}
+                          <div className="p-3 select-none flex-1 min-w-0 flex flex-col justify-between">
+                            <h5 className="text-[12px] font-bold text-slate-800 leading-tight truncate">
+                              {log.videoTitle}
+                            </h5>
+
+                            <div className="flex items-center gap-1.5 text-[10px] text-slate-550 font-medium">
+                              <SVGIcon name="Clock" className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                              <span>約 {log.duration || 15} 分鐘</span>
+                            </div>
+
+                            <div className="flex justify-between items-center gap-1.5">
+                              <div className="flex flex-wrap gap-0.5 max-h-4.5 overflow-hidden">
+                                {log.tags && log.tags.length > 0 ? (
+                                  log.tags.map((tag) => (
+                                    <span
+                                      key={tag}
+                                      className="px-1.5 py-0.5 text-[8px] font-bold bg-indigo-50/70 border border-indigo-100/30 text-indigo-700 rounded"
+                                    >
+                                      {tag}
+                                    </span>
+                                  ))
+                                ) : (
+                                  <span className="text-[8px] text-slate-400 italic">無</span>
+                                )}
+                              </div>
+
+                              {/* Editing triggers */}
+                              <div className="flex items-center gap-1 shrink-0">
+                                <button
+                                  onClick={() => {
+                                    setLogToEditDuration(log);
+                                    setEditingDuration(log.duration || 15);
+                                  }}
+                                  className="text-slate-400 hover:text-indigo-600 p-1"
+                                  title="修改時長"
+                                >
+                                  <SVGIcon name="FileEdit" className="w-3.5 h-3.5" />
+                                </button>
+                                <button
+                                  onClick={() => setLogToDelete(log)}
+                                  className="text-slate-400 hover:text-rose-600 p-1"
+                                  title="刪除"
+                                >
+                                  <SVGIcon name="Trash2" className="w-3.5 h-3.5" />
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Optional feedback comments note banner at the bottom */}
+                        {log.notes && (
+                          <div className="bg-white/40 px-3 py-1.5 text-[10px] text-slate-600 leading-relaxed flex items-start gap-1.5 border-t border-white/80">
+                            <SVGIcon name="FileText" className="w-3" />
+                            <span>{log.notes}</span>
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Inner Delete Confirmation Modals */}
+            {logToDelete && ReactDOM.createPortal(
+              <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-[2px] flex items-center justify-center p-4 z-50 animate-fade-in">
+                <div className="bg-white rounded-3xl p-6 max-w-sm w-full space-y-4 shadow-xl border border-slate-150 relative z-50">
+                  <div className="flex items-center gap-3 text-rose-600">
+                    <div className="p-2.5 bg-rose-50 rounded-2xl">
+                      <SVGIcon name="Trash2" className="w-5 h-5" />
+                    </div>
+                    <h4 className="text-sm font-bold text-slate-800">確認刪除此訓練打卡記錄？</h4>
+                  </div>
+                  <div className="flex gap-2.5 pt-1.5">
+                    <button
+                      onClick={() => setLogToDelete(null)}
+                      className="flex-1 py-2 bg-slate-100 text-slate-600 text-xs font-bold rounded-xl"
+                    >
+                      取消
+                    </button>
+                    <button
+                      onClick={async () => {
+                        await onDeleteLog(logToDelete.id);
+                        setLogToDelete(null);
+                      }}
+                      className="flex-1 py-2 bg-rose-600 text-white text-xs font-bold rounded-xl shadow-md cursor-pointer"
+                    >
+                      確認刪除
+                    </button>
+                  </div>
+                </div>
+              </div>,
+              document.body
+            )}
+
+            {/* Edit Duration Modal Box */}
+            {logToEditDuration && ReactDOM.createPortal(
+              <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-[2px] flex items-center justify-center p-4 z-50 animate-fade-in">
+                <div className="bg-white rounded-3xl p-6 max-w-sm w-full space-y-4 shadow-xl border border-slate-150 relative z-50">
+                  <div className="flex items-center gap-3 text-indigo-600">
+                    <div className="p-2.5 bg-indigo-50 rounded-2xl">
+                      <SVGIcon name="FileEdit" className="w-5 h-5 text-indigo-600" />
+                    </div>
+                    <h4 className="text-sm font-bold text-slate-800">修改訓練時長</h4>
+                  </div>
+                  <div className="space-y-2">
+                    <p className="text-[11px] text-slate-500">請更新「{logToEditDuration.videoTitle}」的本次訓練時長：</p>
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="number"
+                        min={1}
+                        max={180}
+                        value={editingDuration}
+                        onChange={(e) => setEditingDuration(Math.max(1, Number(e.target.value)))}
+                        className="flex-grow px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-sans"
+                      />
+                      <span className="text-xs text-slate-500 font-bold">分鐘</span>
+                    </div>
+                  </div>
+                  <div className="flex gap-2.5 pt-1">
+                    <button
+                      onClick={() => setLogToEditDuration(null)}
+                      className="flex-1 py-2 bg-slate-100 text-slate-600 text-xs font-bold rounded-xl"
+                    >
+                      取消
+                    </button>
+                    <button
+                      onClick={async () => {
+                        await onUpdateLog(logToEditDuration.id, { duration: editingDuration });
+                        setLogToEditDuration(null);
+                      }}
+                      className="flex-1 py-2 bg-indigo-600 text-white text-xs font-bold rounded-xl shadow-md cursor-pointer"
+                    >
+                      確認修改
+                    </button>
+                  </div>
+                </div>
+              </div>,
+              document.body
+            )}
+          </div>
+        );
+      }
+
+      // VideoRecordsPage Sub-component
+      function VideoRecordsPage({ logs, onQuickCheckIn, onUpdateLog }) {
+        const [searchQuery, setSearchQuery] = useState("");
+        const [selectedTag, setSelectedTag] = useState("全部");
+        const [sortBy, setSortBy] = useState("latest");
+
+        const [quickLogVideo, setQuickLogVideo] = useState(null);
+        const [quickDuration, setQuickDuration] = useState(15);
+        const [quickNotes, setQuickNotes] = useState("");
+        const [isSubmitting, setIsSubmitting] = useState(false);
+
+        const [editingTagsVideo, setEditingTagsVideo] = useState(null);
+        const [editingVideoTitle, setEditingVideoTitle] = useState("");
+        const [tagFormSelected, setTagFormSelected] = useState([]);
+        const [editingVideoThumbnail, setEditingVideoThumbnail] = useState("");
+        const [isSavingTags, setIsSavingTags] = useState(false);
+
+        const [pinnedUrls, setPinnedUrls] = useState(() => {
+          try {
+            return JSON.parse(localStorage.getItem(PIN_STORAGE_KEY) || "[]");
+          } catch {
+            return [];
+          }
+        });
+
+        const togglePin = (url) => {
+          const next = pinnedUrls.includes(url) ? pinnedUrls.filter(u => u !== url) : [...pinnedUrls, url];
+          setPinnedUrls(next);
+          localStorage.setItem(PIN_STORAGE_KEY, JSON.stringify(next));
+        };
+
+        const uniqueVideos = useMemo(() => {
+          const map = new Map();
+          logs.forEach((log) => {
+            const existing = map.get(log.videoUrl);
+            if (existing) {
+              existing.practiceCount += 1;
+              if (log.date > existing.latestPracticeDate) {
+                existing.latestPracticeDate = log.date;
+                existing.videoTitle = log.videoTitle;
+                existing.videoThumbnail = log.videoThumbnail;
+                existing.tags = Array.from(new Set([...existing.tags, ...(log.tags || [])]));
+                existing.latestDuration = log.duration || 15;
+              }
+              if (log.createdAt > existing.latestTimestamp) {
+                existing.latestTimestamp = log.createdAt;
+                existing.latestDuration = log.duration || existing.latestDuration || 15;
+              }
+            } else {
+              map.set(log.videoUrl, {
+                videoUrl: log.videoUrl,
+                videoTitle: log.videoTitle,
+                videoThumbnail: log.videoThumbnail,
+                tags: [...(log.tags || [])],
+                practiceCount: 1,
+                latestPracticeDate: log.date,
+                latestTimestamp: log.createdAt,
+                latestDuration: log.duration || 15,
+              });
+            }
+          });
+          return Array.from(map.values());
+        }, [logs]);
+
+        const filteredVideos = useMemo(() => {
+          const list = uniqueVideos.filter((v) => {
+            const matchesSearch = v.videoTitle.toLowerCase().includes(searchQuery.toLowerCase());
+            let matchesTag = false;
+
+            if (selectedTag === "全部") {
+              matchesTag = true;
+            } else if (selectedTag === "線上") {
+              matchesTag = !v.videoUrl.includes("reformer") && !v.tags.includes("實體");
+            } else if (selectedTag === "實體") {
+              matchesTag = v.videoUrl.includes("reformer") || v.tags.includes("實體");
+            } else {
+              const normalizedTags = v.tags.map(t => t.toLowerCase());
+              matchesTag = normalizedTags.some(t => t.includes(selectedTag.toLowerCase()));
+            }
+
+            return matchesSearch && matchesTag;
+          });
+
+          if (sortBy === "latest") {
+            list.sort((a, b) => b.latestPracticeDate.localeCompare(a.latestPracticeDate));
+          } else {
+            list.sort((a, b) => b.practiceCount - a.practiceCount);
+          }
+
+          const pinned = list.filter(v => pinnedUrls.includes(v.videoUrl));
+          const unpinned = list.filter(v => !pinnedUrls.includes(v.videoUrl));
+          return [...pinned, ...unpinned];
+        }, [uniqueVideos, searchQuery, selectedTag, sortBy, pinnedUrls]);
+
+        const handleQuickLogSubmit = async () => {
+          if (!quickLogVideo) return;
+          setIsSubmitting(true);
+          const todayStr = new Date().toISOString().split("T")[0];
+
+          setTimeout(async () => {
+            await onQuickCheckIn({
+              date: todayStr,
+              videoUrl: quickLogVideo.videoUrl,
+              videoTitle: quickLogVideo.videoTitle,
+              videoThumbnail: quickLogVideo.videoThumbnail,
+              tags: quickLogVideo.tags,
+              duration: quickDuration,
+              notes: quickNotes.trim() || undefined,
+            });
+            setIsSubmitting(false);
+            setQuickLogVideo(null);
+            setQuickNotes("");
+            setQuickDuration(15);
+          }, 200);
+        };
+
+        const handleSaveTags = () => {
+          if (!editingTagsVideo) return;
+          setIsSavingTags(true);
+
+          setTimeout(async () => {
+            const logsToUpdate = logs.filter(log => log.videoUrl === editingTagsVideo.videoUrl);
+            for (const log of logsToUpdate) {
+              await onUpdateLog(log.id, {
+                videoTitle: editingVideoTitle.trim() || log.videoTitle,
+                tags: tagFormSelected,
+                videoThumbnail: editingVideoThumbnail.trim() || log.videoThumbnail
+              });
+            }
+            setIsSavingTags(false);
+            setEditingTagsVideo(null);
+          }, 200);
+        };
+
+        const handleOpenEditTags = (video) => {
+          setEditingTagsVideo(video);
+          setEditingVideoTitle(video.videoTitle);
+          setTagFormSelected([...(video.tags || [])]);
+          setEditingVideoThumbnail(video.videoThumbnail || "");
+        };
+
+        const handleToggleTagInForm = (tag) => {
+          if (tagFormSelected.includes(tag)) {
+            setTagFormSelected(tagFormSelected.filter(t => t !== tag));
+          } else {
+            setTagFormSelected([...tagFormSelected, tag]);
+          }
+        };
+
+        return (
+          <div className="space-y-6">
+            
+            {/* Control Filters panel */}
+            <div className="bg-white/50 backdrop-blur-xl border border-white/80 p-5 rounded-3xl shadow-2xs space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-12 gap-3.5">
+                
+                {/* Search Bar */}
+                <div className="md:col-span-6 relative">
+                  <span className="absolute left-3 top-2.5 text-slate-450">
+                    <SVGIcon name="Search" className="w-4 h-4 text-slate-400" />
+                  </span>
+                  <input
+                    type="text"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    placeholder="輸入關鍵字以搜尋課程標題或分類..."
+                    className="w-full pl-9 pr-3 py-2 bg-white border border-slate-200 rounded-xl text-xs focus:ring-1.5 focus:ring-indigo-400/50 focus:outline-none"
+                  />
+                </div>
+
+                {/* Sort Option bar */}
+                <div className="md:col-span-6 flex gap-2">
+                  <div className="relative flex-1">
+                    <span className="absolute left-3 top-2.5 text-slate-400">
+                      <SVGIcon name="ArrowUpDown" className="w-3.5 h-3.5" />
+                    </span>
+                    <select
+                      value={sortBy}
+                      onChange={(e) => setSortBy(e.target.value)}
+                      className="w-full pl-8 pr-3 py-2 bg-white border border-slate-200 rounded-xl text-xs text-slate-700 font-bold focus:outline-none focus:ring-1.5 focus:ring-indigo-400/50"
+                    >
+                      <option value="latest">依日期排序 (最新在前面)</option>
+                      <option value="count">依頻率排序 (上課次數最多)</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+
+              {/* Tag filtering pills */}
+              <div className="flex flex-wrap gap-1 border-t border-slate-100/60 pt-3">
+                {["全部", "線上", "實體", "肩頸", "背部", "核心", "臀部", "腿部", "伸展"].map((tag) => {
+                  const isSelected = selectedTag === tag;
+                  return (
+                    <button
+                      key={tag}
+                      onClick={() => setSelectedTag(tag)}
+                      className={`px-3 py-1.5 text-xs font-bold rounded-xl transition ${
+                        isSelected
+                          ? "bg-indigo-600 text-white shadow-xs"
+                          : "bg-white/60 text-slate-500 border border-slate-200/55 hover:bg-white"
+                      }`}
+                    >
+                      {tag}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Video Cards list Grid */}
+            {filteredVideos.length === 0 ? (
+              <div className="bg-white/40 border border-white/80 border-dashed rounded-[2rem] p-12 text-center text-slate-400 max-w-sm mx-auto space-y-3">
+                <div className="flex justify-center">
+                  <SVGIcon name="Video" className="w-10 h-10 text-slate-350" />
+                </div>
+                <h5 className="font-bold text-slate-600">無符合篩選的課程項目</h5>
+                <p className="text-xs text-slate-400 leading-normal">您可以嘗試清空關鍵字、改選其他分類標籤或是回到打卡頁面加入影片打卡。</p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                {filteredVideos.map((video) => {
+                  const isPinned = pinnedUrls.includes(video.videoUrl);
+                  return (
+                    <div
+                      key={video.videoUrl}
+                      className="bg-white/55 backdrop-blur-md border border-white/80 rounded-3xl overflow-hidden shadow-xs hover:shadow-lg transition-all duration-300 hover:scale-[1.01] flex flex-col group font-sans relative"
+                    >
+                      {/* Card visual elements */}
+                      <div className="relative aspect-video w-full bg-slate shadow-inner shrink-0 overflow-hidden">
+                        <img
+                          src={getCleanThumbnail(video.videoThumbnail)}
+                          alt={video.videoTitle}
+                          className={`block w-full h-full object-cover transition-transform duration-300 ${
+                            (video.videoThumbnail?.includes("ytimg") || video.videoThumbnail?.includes("youtube")) 
+                              ? "scale-[1.16] group-hover:scale-[1.20]" 
+                              : "group-hover:scale-[1.03]"
+                          }`}
+                        />
+                        
+                        {/* Pin status icon trigger */}
+                        <button
+                          onClick={() => togglePin(video.videoUrl)}
+                          className={`absolute top-3 right-3 p-2 rounded-full backdrop-blur-md text-white transition-all duration-200 z-10 cursor-pointer shadow-sm ${
+                            isPinned 
+                              ? "bg-amber-500 border border-amber-400 font-bold" 
+                              : "bg-slate-900/60 hover:bg-slate-900/80 border border-white/20"
+                          }`}
+                          title={isPinned ? "取消釘選" : "釘選影片"}
+                        >
+                          <SVGIcon name="Pin" className={`w-3.5 h-3.5 ${isPinned ? "rotate-45 fill-white" : ""}`} />
+                        </button>
+
+                        {/* Count and last practice badges */}
+                        <div className="absolute top-3 left-3 flex flex-col gap-1.5 z-10">
+                          <span className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[10px] font-extrabold uppercase tracking-widest bg-indigo-600/95 border border-indigo-500 text-white leading-none shadow-md font-sans">
+                            {video.videoUrl.includes("reformer") ? (
+                              <>
+                                <SVGIcon name="Sparkles" className="w-3.5 h-3.5 text-indigo-300 animate-pulse" />
+                                <span>上課 {video.practiceCount} 堂</span>
+                              </>
+                            ) : (
+                              <>
+                                <SVGIcon name="TrendingUp" className="w-3.5 h-3.5" />
+                                <span>練習 {video.practiceCount} 次</span>
+                              </>
+                            )}
+                          </span>
+                        </div>
+
+                        {/* External floating link */}
+                        {!video.videoUrl.includes("reformer") && (
+                          <a
+                            href={video.videoUrl}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="absolute bottom-3 right-3 p-2 bg-white/95 hover:bg-white text-slate-700 hover:text-slate-900 hover:scale-107 rounded-full shadow-md duration-200 z-10"
+                            title="開啟影片網址"
+                          >
+                            <SVGIcon name="ExternalLink" className="w-3.5 h-3.5" />
+                          </a>
+                        )}
+
+                        {/* Hover overlay */}
+                        {video.videoUrl.includes("reformer") ? null : (
+                          <div className="absolute inset-0 bg-slate-950/35 opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex items-center justify-center">
+                            <a
+                              href={video.videoUrl}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="p-3 bg-white text-slate-905 rounded-full hover:scale-110 duration-200 shadow-md flex items-center justify-center"
+                            >
+                              <SVGIcon name="Play" className="w-4 h-4 fill-slate-905 ml-0.5" />
+                            </a>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Card Text & Actions */}
+                      <div className="p-4 flex-1 flex flex-col justify-between space-y-3.5">
+                        <div className="space-y-1.5">
+                          <h4 className="text-[12px] sm:text-[13px] font-bold text-slate-850 leading-snug tracking-wide group-hover:text-indigo-900 transition-colors line-clamp-2">
+                            {video.videoTitle}
+                          </h4>
+                          
+                          {/* Latest logged day */}
+                          <div className="flex items-center gap-1 text-[10px] text-slate-400 font-medium">
+                            <SVGIcon name="Calendar" className="w-3.5 h-3.5 text-slate-400" />
+                            <span>上次上課日期：{video.latestPracticeDate}</span>
+                          </div>
+                        </div>
+
+                        {/* Tags and Action footer */}
+                        <div className="pt-3 border-t border-slate-100/60 flex items-center justify-between gap-2">
+                          <div className="flex flex-wrap gap-0.5 max-w-[124px] overflow-hidden">
+                            {video.tags && video.tags.length > 0 ? (
+                              video.tags.slice(0, 2).map((t) => (
+                                <span
+                                  key={t}
+                                  className="px-1.5 py-0.5 rounded text-[8px] font-bold text-indigo-700 bg-indigo-50/70 border border-indigo-100/40 font-mono"
+                                >
+                                  {t}
+                                </span>
+                              ))
+                            ) : (
+                              <span className="text-[8px] text-slate-405 italic">無分類</span>
+                            )}
+                            {video.tags && video.tags.length > 2 && (
+                              <span className="px-1.5 py-0.5 rounded text-[8px] font-bold text-slate-400 bg-slate-100 border border-slate-200/50">
+                                +{video.tags.length - 2}
+                              </span>
+                            )}
+                          </div>
+
+                          {/* Action buttons (Edit tag, Reclass) */}
+                          <div className="flex items-center gap-1.5">
+                            <button
+                              title="編輯標籤"
+                              onClick={() => handleOpenEditTags(video)}
+                              className="p-1 px-2 border border-slate-200 hover:border-slate-350 hover:bg-slate-50 text-slate-650 rounded-xl text-[10px] font-extrabold flex items-center gap-1 cursor-pointer duration-150"
+                            >
+                              <SVGIcon name="ClipboardEdit" className="w-3 h-3 text-indigo-600" />
+                              <span>編輯</span>
+                            </button>
+
+                            <button
+                              onClick={() => {
+                                setQuickLogVideo(video);
+                                setQuickDuration(video.latestDuration || 15);
+                              }}
+                              className="flex items-center gap-1.5 px-2.5 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-[10px] font-bold duration-150 cursor-pointer shrink-0 shadow-md shadow-indigo-100"
+                            >
+                              <SVGIcon name="Plus" className="w-3.5 h-3.5 text-indigo-100" />
+                              <span>再次上課</span>
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
+            {/* Standalone Modal Boxes */}
+            {quickLogVideo && ReactDOM.createPortal(
+              <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-[2px] flex items-center justify-center p-4 z-50 animate-fade-in">
+                <div className="bg-white rounded-3xl p-6 max-w-sm w-full space-y-4 shadow-xl border border-slate-150 relative z-50">
+                  <div className="flex justify-between items-center border-b pb-2">
+                    <span className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
+                      <SVGIcon name="Dumbbell" className="w-4 h-4 text-indigo-500" />
+                      <span>再次上課打卡設定</span>
+                    </span>
+                    <button onClick={() => setQuickLogVideo(null)} className="text-slate-450 hover:text-slate-650">✕</button>
+                  </div>
+
+                  <div className="bg-slate-50 p-3 rounded-2xl border border-slate-100 flex gap-2.5">
+                    <img src={getCleanThumbnail(quickLogVideo.videoThumbnail)} alt="Thumbnail" className="w-16 h-12 object-cover rounded-md" />
+                    <p className="text-xs font-bold text-slate-850 leading-tight truncate-3">{quickLogVideo.videoTitle}</p>
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-bold text-slate-500 uppercase block">練習時長 (分鐘)</label>
+                    <input
+                      type="number"
+                      min={1}
+                      max={180}
+                      value={quickDuration}
+                      onChange={(e) => setQuickDuration(Math.max(1, Number(e.target.value)))}
+                      className="w-full px-3 py-2 border bg-slate-50/50 rounded-xl text-xs font-sans"
+                    />
+                  </div>
+
+                  <div className="flex gap-2 pt-1.5">
+                    <button onClick={() => setQuickLogVideo(null)} className="flex-grow py-2 bg-slate-100 rounded-xl font-bold text-xs text-slate-650 hover:bg-slate-200">取消</button>
+                    <button
+                      onClick={handleQuickLogSubmit}
+                      disabled={isSubmitting}
+                      className="flex-grow py-2 bg-indigo-600 text-white rounded-xl font-bold text-xs hover:bg-indigo-700"
+                    >
+                      {isSubmitting ? "正在儲存..." : "快速再次打卡"}
+                    </button>
+                  </div>
+                </div>
+              </div>,
+              document.body
+            )}
+
+            {/* Custom tags/titles/thumbnails edit modal */}
+            {editingTagsVideo && ReactDOM.createPortal(
+              <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-[2px] flex items-center justify-center p-4 z-50 animate-fade-in">
+                <div className="bg-white rounded-[2rem] p-6 max-w-sm w-full space-y-4 shadow-xl border border-slate-150 relative z-50 overflow-y-auto max-h-[90vh]">
+                  <div className="flex justify-between items-center border-b pb-2">
+                    <span className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
+                      <SVGIcon name="FileEdit" className="w-4 h-4 text-indigo-500" />
+                      <span>自訂修改課程資訊</span>
+                    </span>
+                    <button onClick={() => setEditingTagsVideo(null)} className="text-slate-450 hover:text-slate-650">✕</button>
+                  </div>
+
+                  {/* 1. Modify Title */}
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-bold text-slate-500 uppercase block">課程名稱：</label>
+                    <textarea
+                      rows={2}
+                      value={editingVideoTitle}
+                      onChange={(e) => setEditingVideoTitle(e.target.value)}
+                      placeholder="請輸入課程名稱..."
+                      className="w-full px-3 py-2 bg-slate-50/50 border rounded-xl text-xs"
+                    />
+                  </div>
+
+                  {/* 2. Modify Thumbnail link */}
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-bold text-slate-500 uppercase block">自訂縮圖網址 (選填)：</label>
+                    <input
+                      type="text"
+                      value={editingVideoThumbnail}
+                      onChange={(e) => setEditingVideoThumbnail(e.target.value)}
+                      placeholder="請輸入 Unsplash、imgur 等圖片連結..."
+                      className="w-full px-3 py-2 bg-slate-50/50 border rounded-xl text-xs"
+                    />
+                  </div>
+
+                  {/* 3. Modify Tags checkbox */}
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-bold text-slate-500 uppercase block">分類標籤勾選：</label>
+                    <div className="grid grid-cols-2 gap-2">
+                      {["線上", "實體", "肩頸", "背部", "核心", "臀部", "腿部", "伸展"].map((tag) => {
+                        const hasSelected = tagFormSelected.includes(tag);
+                        return (
+                          <button
+                            key={tag}
+                            type="button"
+                            onClick={() => handleToggleTagInForm(tag)}
+                            className={`py-1.5 px-3 rounded-lg border text-xs font-bold transition flex items-center justify-center gap-1 ${
+                              hasSelected
+                                ? "bg-indigo-50 border-indigo-200 text-indigo-700 w-full"
+                                : "bg-white border-slate-200 text-slate-400 hover:bg-slate-50 w-full"
+                            }`}
+                          >
+                            {hasSelected && <span className="text-[10px]">✓</span>}
+                            <span>{tag}</span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  <div className="flex gap-2 pt-2 border-t">
+                    <button onClick={() => setEditingTagsVideo(null)} className="flex-1 py-2 bg-slate-100 text-slate-650 rounded-xl font-bold text-xs duration-150">取消</button>
+                    <button
+                      onClick={handleSaveTags}
+                      disabled={isSavingTags}
+                      className="flex-1 py-2 bg-indigo-600 text-white rounded-xl font-bold text-xs duration-150 shadow-md shadow-indigo-100 cursor-pointer"
+                    >
+                      {isSavingTags ? "儲存中..." : "儲存設定"}
+                    </button>
+                  </div>
+                </div>
+              </div>,
+              document.body
+            )}
+          </div>
+        );
+      }
+
+      // App Entry Container
+      function App() {
+        const [logs, setLogs] = useState([]);
+        const [loading, setLoading] = useState(true);
+        const [activeTab, setActiveTab] = useState("check-in");
+
+        // Selected Calendar date string
+        const [selectedDate, setSelectedDate] = useState(() => {
+          const today = new Date();
+          const yyyy = today.getFullYear();
+          const mm = String(today.getMonth() + 1).padStart(2, "0");
+          const dd = String(today.getDate()).padStart(2, "0");
+          return `${yyyy}-${mm}-${dd}`;
+        });
+
+        // Load logs from Local Storage
+        useEffect(() => {
+          try {
+            const stored = localStorage.getItem(LOCAL_STORAGE_KEY);
+            if (stored) {
+              const parsed = JSON.parse(stored);
+              parsed.sort((a, b) => {
+                const datesDiff = b.date.localeCompare(a.date);
+                if (datesDiff !== 0) return datesDiff;
+                return b.createdAt - a.createdAt;
+              });
+              setLogs(parsed);
+            }
+          } catch (e) {
+            console.error(e);
+          } finally {
+            setLoading(false);
+          }
+        }, []);
+
+        const saveToLocal = (updated) => {
+          setLogs(updated);
+          try {
+            localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(updated));
+          } catch (e) {
+            console.error(e);
+          }
+        };
+
+        const addLog = async (logData) => {
+          const id = "log_" + Date.now() + "_" + Math.random().toString(36).substr(2, 9);
+          const createdAt = Date.now();
+          const newLog = { ...logData, id, createdAt };
+
+          const updated = [newLog, ...logs].sort((a, b) => {
+            const dd = b.date.localeCompare(a.date);
+            if (dd !== 0) return dd;
+            return b.createdAt - a.createdAt;
+          });
+          saveToLocal(updated);
+        };
+
+        const deleteLog = async (id) => {
+          const updated = logs.filter(l => l.id !== id);
+          saveToLocal(updated);
+        };
+
+        const updateLog = async (id, fields) => {
+          const updated = logs.map(l => l.id === id ? { ...l, ...fields } : l);
+          saveToLocal(updated);
+        };
+
+        return (
+          <div className="min-h-screen pb-16 font-sans relative overflow-hidden">
+            {/* Ambient Wall Mesh Gradients */}
+            <div className="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] bg-pink-200/50 blur-[130px] rounded-full pointer-events-none z-0"></div>
+            <div className="absolute bottom-[5%] right-[-10%] w-[60%] h-[60%] bg-indigo-100/40 blur-[140px] rounded-full pointer-events-none z-0"></div>
+            <div className="absolute top-[25%] right-[10%] w-[40%] h-[40%] bg-amber-100/40 blur-[110px] rounded-full pointer-events-none z-0"></div>
+
+            {/* Navigation Header bar bar */}
+            <header className="fixed top-0 left-0 right-0 z-40 bg-white/40 backdrop-blur-xl border-b border-white/60 shadow-xs">
+              <div className="max-w-7xl mx-auto px-4 md:px-6 h-16 flex items-center justify-between relative z-10">
+                <div className="flex items-center gap-2.5">
+                  <div className="p-2 bg-indigo-600 text-white rounded-2xl flex items-center justify-center shadow-lg shadow-indigo-200">
+                    <SVGIcon name="Flower" className="w-5 h-5 text-indigo-100" />
+                  </div>
+                  <h1 className="text-sm font-extrabold text-slate-900 tracking-tight">皮拉提斯訓練紀錄</h1>
+                </div>
+
+                {/* Switching Tabs */}
+                <div className="bg-white/60 backdrop-blur-md border border-white/85 p-1 rounded-xl flex items-center gap-1 shadow-2xs">
+                  <button
+                    onClick={() => setActiveTab("check-in")}
+                    className={`p-2 rounded-lg transition-all cursor-pointer flex items-center justify-center ${
+                      activeTab === "check-in"
+                        ? "bg-white text-indigo-600 shadow-xs scale-102 border border-white/80"
+                        : "text-slate-500 hover:text-slate-800"
+                    }`}
+                    title="加簽打卡牆"
+                  >
+                    <SVGIcon name="CalendarDays" className="w-4 h-4" />
+                  </button>
+                  <button
+                    onClick={() => setActiveTab("videos")}
+                    className={`p-2 rounded-lg transition-all cursor-pointer flex items-center justify-center ${
+                      activeTab === "videos"
+                        ? "bg-white text-indigo-600 shadow-xs scale-102 border border-white/80"
+                        : "text-slate-500 hover:text-slate-800"
+                    }`}
+                    title="影片影片庫"
+                  >
+                    <SVGIcon name="Video" className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
+            </header>
+
+            {/* Main view container layout */}
+            <main className="max-w-7xl mx-auto px-4 md:px-6 pt-24 pb-8 relative z-10">
+              {loading ? (
+                <div className="py-24 text-center space-y-4">
+                  <div className="inline-block p-4 bg-white/60 backdrop-blur-md border border-white/80 rounded-3xl shadow-xs">
+                    <div className="w-8 h-8 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin"></div>
+                  </div>
+                  <p className="text-xs font-bold text-slate-755">正在準備您的運動日誌模組...</p>
+                </div>
+              ) : (
+                <div className="animate-fade-in">
+                  {activeTab === "check-in" ? (
+                    <CheckInPage
+                      logs={logs}
+                      onAddLog={addLog}
+                      onDeleteLog={deleteLog}
+                      onUpdateLog={updateLog}
+                      selectedDate={selectedDate}
+                      onSelectDate={setSelectedDate}
+                    />
+                  ) : (
+                    <VideoRecordsPage
+                      logs={logs}
+                      onQuickCheckIn={addLog}
+                      onUpdateLog={updateLog}
+                    />
+                  )}
+                </div>
+              )}
+            </main>
+          </div>
+        );
+      }
+
+      const root = ReactDOM.createRoot(document.getElementById("root"));
+      root.render(<App />);
+    </script>
+  </body>
+</html>
