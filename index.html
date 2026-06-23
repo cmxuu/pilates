@@ -1500,7 +1500,7 @@ const handleQuickLogSubmit = async () => {
                   <div className="flex justify-between items-center border-b pb-2">
                     <span className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
                       <SVGIcon name="Dumbbell" className="w-4 h-4 text-indigo-500" />
-                      <span>再次上課打卡設定</span>
+                      <span>再次上課</span>
                     </span>
                     <button onClick={() => setQuickLogVideo(null)} className="text-slate-450 hover:text-slate-650">✕</button>
                   </div>
@@ -1510,27 +1510,32 @@ const handleQuickLogSubmit = async () => {
                     <p className="text-xs font-bold text-slate-850 leading-tight truncate-3">{quickLogVideo.videoTitle}</p>
                   </div>
 
-		  <div className="space-y-1">
-		    <label className="text-[10px] font-bold text-slate-500 uppercase block">打卡日期</label>
-		    <input
-		      type="date"
-		      value={quickDate}
-		      onChange={(e) => setQuickDate(e.target.value)}
-		      className="w-full px-3 py-2 border bg-slate-50/50 rounded-xl text-xs font-sans"
-		    />
-		  </div>
+{/* 1. 打卡日期欄位 */}
+<div className="space-y-1">
+  <label className="text-[10px] font-bold text-slate-500 uppercase block">打卡日期</label>
+  <input
+    type="date"
+    value={quickDate}
+    onChange={(e) => setQuickDate(e.target.value)}
+    className="w-full h-10 px-3 py-2 border border-slate-200 bg-slate-50/50 rounded-xl text-xs font-sans block box-border text-left focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+  />
+</div>
 
-                  <div className="space-y-1">
-                    <label className="text-[10px] font-bold text-slate-500 uppercase block">練習時長 (分鐘)</label>
-                    <input
-                      type="number"
-                      min={1}
-                      max={180}
-                      value={quickDuration}
-                      onChange={(e) => setQuickDuration(Math.max(1, Number(e.target.value)))}
-                      className="w-full px-3 py-2 border bg-slate-50/50 rounded-xl text-xs font-sans"
-                    />
-                  </div>
+{/* 2. 練習時長欄位 */}
+<div className="space-y-1 mt-3">
+  <label className="text-[10px] font-bold text-slate-500 uppercase block">練習時長</label>
+  <input
+    type="number"
+    inputMode="numeric"
+    pattern="[0-9]*"
+    min="1"
+    /* 這裡維持手機網頁對齊的完美樣式 */
+    className="w-full h-10 px-3 py-2 border border-slate-200 bg-slate-50/50 rounded-xl text-xs font-sans block box-border focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+    value={quickDuration}
+    // ✅ 允許直接刪除到空字串，不會自動補 0 擋你輸入
+    onChange={(e) => setQuickDuration(e.target.value)}
+  />
+</div>
 
                   <div className="flex gap-2 pt-1.5">
                     <button onClick={() => setQuickLogVideo(null)} className="flex-grow py-2 bg-slate-100 rounded-xl font-bold text-xs text-slate-650 hover:bg-slate-200">取消</button>
