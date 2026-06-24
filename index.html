@@ -266,7 +266,7 @@
       const getCleanThumbnail = (url) => {
         if (!url) return "";
         if (url.includes("ytimg.com") || url.includes("youtube.com")) {
-          return url.replace("hqdefault.jpg", "mqdefault.jpg");
+          return url.replace("mqdefault.jpg", "hqdefault.jpg");
         }
         return url;
       };
@@ -290,7 +290,7 @@
           const ytMatch = url.match(ytRegex);
           if (ytMatch) {
             videoId = ytMatch[1];
-            thumbnail = `https://img.youtube.com/vi/${videoId}/mqdefault.jpg`;
+            thumbnail = `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`;
             title = "YouTube 皮拉提斯課程";
           } else if (url.includes("vimeo.com")) {
             title = "Vimeo 運動課程影片";
