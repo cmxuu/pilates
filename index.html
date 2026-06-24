@@ -5,22 +5,18 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
     <title>皮拉提斯訓練紀錄</title>
     
-    <!-- PWA Meta Tags & Manifest -->
     <meta name="theme-color" content="#4f46e5" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="default" />
     <meta name="apple-mobile-web-app-title" content="皮拉提斯訓練" />
     <link rel="apple-touch-icon" href="https://i.ibb.co/YBcmDp0M/yoga.png" />
     
-    <!-- Inline Manifest to make it completely self-contained and PWA Installable -->
     <link rel="manifest" href='data:application/manifest+json,{"name":"皮拉提斯訓練紀錄","short_name":"皮拉提斯","theme_color":"#4f46e5","background_color":"#f8fafc","display":"standalone","start_url":".","icons":[{"src":"https://i.ibb.co/YBcmDp0M/yoga.png","sizes":"192x192","type":"image/png"},{"src":"https://i.ibb.co/YBcmDp0M/yoga.png","sizes":"512x512","type":"image/png"}]}' />
 
-    <!-- Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;850&display=swap" rel="stylesheet" />
 
-    <!-- CDN Script Assets (React & Babel Transpiler) -->
     <script src="https://cdn.jsdelivr.net/npm/react@18.3.1/umd/react.production.min.js" crossorigin></script>
     <script src="https://cdn.jsdelivr.net/npm/react-dom@18.3.1/umd/react-dom.production.min.js" crossorigin></script>
     <script src="https://cdn.jsdelivr.net/npm/@babel/standalone@7.24.0/babel.min.js" crossorigin></script>
@@ -40,6 +36,7 @@
             scale: {
               '102': '1.02',
               '103': '1.03',
+              '107': '1.07',
             }
           }
         }
@@ -64,7 +61,6 @@
 
     <div id="root"></div>
 
-    <!-- React Application Implementation -->
     <script type="text/babel" data-presets="react,typescript">
       const { useState, useEffect, useMemo, useCallback } = React;
 
@@ -493,9 +489,13 @@
 
           setTimeout(async () => {
             const existingCourse = logs.find(l => l.videoUrl === finalUrl);
-            const finalTags = (existingCourse && existingCourse.tags && existingCourse.tags.length > 0)
-              ? existingCourse.tags
-              : (workoutType === "reformer" ? ["實體"] : ["線上"]);
+            
+            let finalTags = [];
+            if (existingCourse && existingCourse.tags && existingCourse.tags.length > 0) {
+              finalTags = existingCourse.tags;
+            } else {
+              finalTags = workoutType === "reformer" ? ["實體"] : ["線上"];
+            }
 
             await onAddLog({
               date: selectedDate,
@@ -541,7 +541,7 @@
           }
 
           const monthPrefix = `${currentYear}-${(currentMonth + 1) < 10 ? "0" + (currentMonth + 1) : currentMonth + 1}`;
-          const thisMonthWorkouts = logs.filter((log) => log.date.startsWith(monthPrefix)).length;
+          const thisMonthWorkouts = new Set(logs.filter((log) => log.date.startsWith(monthPrefix)).map(log => log.date)).size;
 
           return {
             currentStreak,
@@ -595,52 +595,61 @@
         }, [currentYear, currentMonth]);
 
         return (
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
             {/* Left Column Calendar */}
             <div className="lg:col-span-7 space-y-6">
               
-              {/* Dashboard Wall */}
-              <div className="bg-white/40 backdrop-blur-xl border border-white/60 rounded-3xl p-5 shadow-xs">
-                <div className="flex items-center gap-2 mb-4">
-                  <div className="p-2 bg-indigo-50 text-indigo-600 rounded-xl">
-                    <SVGIcon name="Sparkles" className="w-4 h-4 text-indigo-600" />
-                  </div>
-                  <h2 className="text-sm font-bold text-slate-800 tracking-wide">打卡牆</h2>
-                </div>
+              {/* Unified Calendar & Seamless Stats Grid without outer boxes for stats */}
+              <div className="bg-white/50 backdrop-blur-xl border border-white/80 rounded-3xl shadow-xs p-6">
                 
-                <div className="grid grid-cols-3 gap-3">
-                  <div className="bg-white/60 border border-white/80 rounded-2xl p-4 text-center">
-                    <p className="text-xs text-slate-400 font-bold mb-1">連續打卡</p>
-                    <div className="flex items-baseline justify-center gap-0.5">
-                      <span className="text-2xl font-extrabold text-indigo-600">{stats.currentStreak}</span>
-                      <span className="text-[10px] text-slate-500 font-medium">天</span>
+                {/* Seamless Stats Header (Directly showing streak without boxes) */}
+                <div className="flex justify-between items-center mb-6 px-2">
+                  <div className="flex flex-col items-center flex-1">
+                    <span className="text-[11px] text-slate-400 font-bold mb-1">連續打卡</span>
+                    <div className="flex items-baseline gap-0.5">
+                      <span className="text-xl font-bold text-indigo-600">{stats.currentStreak}</span>
+                      <span className="text-xs text-slate-500 font-medium">天</span>
                     </div>
                   </div>
-
-                  <div className="bg-white/60 border border-white/80 rounded-2xl p-4 text-center">
-                    <p className="text-xs text-slate-400 font-bold mb-1">本月練習</p>
-                    <div className="flex items-baseline justify-center gap-0.5">
-                      <span className="text-2xl font-extrabold text-slate-700">{stats.thisMonthWorkouts}</span>
-                      <span className="text-[10px] text-slate-500 font-medium">次</span>
+                  <div className="w-px h-10 bg-slate-200/60"></div>
+                  <div className="flex flex-col items-center flex-1">
+                    <span className="text-[11px] text-slate-400 font-bold mb-1">本月打卡</span>
+                    <div className="flex items-baseline gap-0.5">
+                      <span className="text-xl font-bold text-slate-700">{stats.thisMonthWorkouts}</span>
+                      <span className="text-xs text-slate-500 font-medium">天</span>
                     </div>
                   </div>
-
-                  <div className="bg-white/60 border border-white/80 rounded-2xl p-4 text-center">
-                    <p className="text-xs text-slate-400 font-bold mb-1">累計打卡</p>
-                    <div className="flex items-baseline justify-center gap-0.5">
-                      <span className="text-2xl font-extrabold text-slate-700">{stats.allTimeDays}</span>
+                  <div className="w-px h-10 bg-slate-200/60"></div>
+                  <div className="flex flex-col items-center flex-1">
+                    <span className="text-[11px] text-slate-400 font-bold mb-1">累計打卡</span>
+                    <div className="flex items-baseline gap-0.5">
+                      <span className="text-xl font-bold text-slate-700">{stats.allTimeDays}</span>
                       <span className="text-[10px] text-slate-500 font-medium">天</span>
                     </div>
                   </div>
                 </div>
-              </div>
 
-              {/* Dynamic Calendar Grid */}
-              <div className="bg-white/50 backdrop-blur-xl border border-white/80 rounded-[2rem] shadow-xs p-6">
-                <div className="flex justify-between items-center mb-6">
-                  <h2 className="text-lg font-bold text-slate-900">
-                    {currentYear} 年 {currentMonth + 1} 月
-                  </h2>
+                {/* Light Divider */}
+                <div className="h-px w-full bg-gradient-to-r from-transparent via-slate-200 to-transparent mb-4"></div>
+
+                {/* Calendar Header with Back to Today capability */}
+                <div className="flex justify-between items-center mb-6 px-1">
+                  <button 
+                    className="text-lg font-bold text-slate-900 cursor-pointer hover: transition flex items-center gap-1.5 group focus:outline-none"
+                    onClick={() => {
+                      const today = new Date();
+                      setCurrentYear(today.getFullYear());
+                      setCurrentMonth(today.getMonth());
+                      const yyyy = today.getFullYear();
+                      const mm = String(today.getMonth() + 1).padStart(2, "0");
+                      const dd = String(today.getDate()).padStart(2, "0");
+                      onSelectDate(`${yyyy}-${mm}-${dd}`);
+                    }}
+                    title="點擊回到當天日期"
+                  >
+                    <span>{currentYear} 年 {currentMonth + 1} 月</span>
+                  </button>
+                  
                   <div className="flex items-center gap-1">
                     <button
                       onClick={() => {
@@ -671,11 +680,11 @@
                   </div>
                 </div>
 
-                <div className="grid grid-cols-7 gap-1 text-center mb-2">
+                <div className="grid grid-cols-7 gap-1 text-center mb-3">
                   {["日", "一", "二", "三", "四", "五", "六"].map((w, idx) => (
                     <span
                       key={w}
-                      className={`text-[11px] font-bold py-1.5 ${
+                      className={`text-[11px] font-bold py-1 ${
                         idx === 0 || idx === 6 ? "text-rose-400/80" : "text-slate-500"
                       }`}
                     >
@@ -684,36 +693,41 @@
                   ))}
                 </div>
 
-                <div className="grid grid-cols-7 gap-y-2 gap-x-1.5">
+                {/* Adjusted Calendar Days: round circles, no dots below, smaller vertical gaps */}
+                <div className="grid grid-cols-7 gap-y-1.5 gap-x-1">
                   {calendarDays.map((item, idx) => {
                     const isChecked = checkedDates.has(item.dateString);
                     const isSelected = selectedDate === item.dateString;
                     const isToday = new Date().toISOString().split("T")[0] === item.dateString;
 
+                    let btnClass = "relative w-9 h-9 sm:w-10 sm:h-10 mx-auto rounded-full flex items-center justify-center transition cursor-pointer text-[13px] font-bold border ";
+
+                    if (isSelected) {
+                      if (isChecked) {
+                        btnClass += "bg-indigo-600 text-white border-indigo-600 shadow-md";
+                      } else {
+                        btnClass += "bg-white text-indigo-600 border-indigo-600 shadow-sm";
+                      }
+                    } else {
+                      if (isChecked) {
+                        btnClass += "bg-indigo-400 text-white border-transparent shadow-sm hover:bg-indigo-500";
+                      } else if (isToday) {
+                        btnClass += "bg-indigo-50/80 text-indigo-700 border-indigo-200/50 hover:bg-indigo-100";
+                      } else if (item.isCurrentMonth) {
+                        btnClass += "text-slate-700 border-transparent hover:bg-white/80";
+                      } else {
+                        btnClass += "text-slate-300 border-transparent hover:bg-white/40";
+                      }
+                    }
+
                     return (
-			<button
-			  key={idx}
-			  onClick={() => onSelectDate(item.dateString)}
-			  // 加入 border 預留空間，移除 scale-103 避免跳動
-			  className={`relative py-3.5 rounded-2xl flex flex-col items-center justify-center transition cursor-pointer text-xs font-bold border ${
-			    isSelected
-			      ? "bg-indigo-600 text-white shadow-lg shadow-indigo-100 border-indigo-600"
-			      : isToday
-			      ? "bg-indigo-50/80 text-indigo-700 hover:bg-indigo-150/80 border-indigo-200/40"
-			      : item.isCurrentMonth
-			      ? "text-slate-800 hover:bg-white/65 border-transparent"
-			      : "text-slate-350 hover:bg-white/40 border-transparent"
-			  }`}
-			>
-			  <span className="text-[13px]">{item.day}</span>
-			  {isChecked && (
-			    <span
-			      className={`absolute bottom-1 w-1.5 h-1.5 rounded-full ${
-			        isSelected ? "bg-white" : "bg-indigo-600"
-			      }`}
-			    />
-			  )}
-			</button>
+                      <button
+                        key={idx}
+                        onClick={() => onSelectDate(item.dateString)}
+                        className={btnClass}
+                      >
+                        {item.day}
+                      </button>
                     );
                   })}
                 </div>
@@ -813,7 +827,7 @@
                             {course.title}
                           </option>
                         ))}
-                        <option value="custom">＋ 自訂自組課程（可自行新增課程名稱）</option>
+                        <option value="custom">＋ 自訂自組課程</option>
                       </select>
                     </div>
                   )}
@@ -894,7 +908,7 @@
               {/* Day logs list */}
               <div className="space-y-3">
                 <div className="flex justify-between items-center">
-                  <h4 className="text-sm font-bold text-slate-800 font-sans flex items-center gap-1.5">
+                  <h4 className="ml-2 text-sm font-bold text-slate-800 font-sans flex items-center gap-1.5">
                     <span>{parseInt(selectedDate.split("-")[0])}年{parseInt(selectedDate.split("-")[1])}月{parseInt(selectedDate.split("-")[2])}日</span>
                     <span className="text-xs text-slate-400 font-normal">（{selectedDateLogs.length} 筆）</span>
                   </h4>
@@ -943,13 +957,14 @@
                             )}
                           </div>
 
-                          {/* Detail Metadata */}
-                          <div className="p-3 select-none flex-1 min-w-0 flex flex-col justify-between">
+                          {/* Detail Metadata - 💡 調整了卡片右側的上下 padding */}
+                          <div className="px-3 pt-2.5 pb-1.5 select-none flex-1 min-w-0 flex flex-col justify-between">
                             <h5 className="text-[12px] font-bold text-slate-800 leading-tight truncate">
                               {log.videoTitle}
                             </h5>
 
-                            <div className="flex items-center gap-1.5 text-[10px] text-slate-550 font-medium">
+                            {/* 💡 加上 my-auto 強制置中 */}
+                            <div className="flex items-center gap-1.5 text-[10px] text-slate-550 font-medium my-auto">
                               <SVGIcon name="Clock" className="w-3.5 h-3.5 text-slate-400 shrink-0" />
                               <span>約 {log.duration || 15} 分鐘</span>
                             </div>
@@ -1092,14 +1107,14 @@
       // VideoRecordsPage Sub-component
       function VideoRecordsPage({ logs, onQuickCheckIn, onUpdateLog }) {
         const [searchQuery, setSearchQuery] = useState("");
-        const [selectedTag, setSelectedTag] = useState("全部");
+        const [selectedTag, setSelectedTag] = useState("釘選");
         const [sortBy, setSortBy] = useState("latest");
 
         const [quickLogVideo, setQuickLogVideo] = useState(null);
         const [quickDuration, setQuickDuration] = useState(15);
         const [quickNotes, setQuickNotes] = useState("");
         const [isSubmitting, setIsSubmitting] = useState(false);
-	const [quickDate, setQuickDate] = useState(() => new Date().toISOString().split("T")[0]);
+	      const [quickDate, setQuickDate] = useState(() => new Date().toISOString().split("T")[0]);
 
         const [editingTagsVideo, setEditingTagsVideo] = useState(null);
         const [editingVideoTitle, setEditingVideoTitle] = useState("");
@@ -1159,7 +1174,9 @@
             const matchesSearch = v.videoTitle.toLowerCase().includes(searchQuery.toLowerCase());
             let matchesTag = false;
 
-            if (selectedTag === "全部") {
+            if (selectedTag === "釘選") {
+              matchesTag = pinnedUrls.includes(v.videoUrl);
+            } else if (selectedTag === "全部") {
               matchesTag = true;
             } else if (selectedTag === "線上") {
               matchesTag = !v.videoUrl.includes("reformer") && !v.tags.includes("實體");
@@ -1184,42 +1201,36 @@
           return [...pinned, ...unpinned];
         }, [uniqueVideos, searchQuery, selectedTag, sortBy, pinnedUrls]);
 
-const handleQuickLogSubmit = async () => {
-  if (!quickLogVideo) return;
-  
-  // 1. 先啟動儲存中狀態
-  setIsSubmitting(true);
-  
-  try {
-    // 安全檢查：確保日期有值，若空值則預設今天
-    const targetDate = quickDate || new Date().toISOString().split("T")[0];
-    
-    // 2. 觸發新增資料庫（localStorage）
-    await onQuickCheckIn({
-      date: targetDate,
-      videoUrl: quickLogVideo.videoUrl,
-      videoTitle: quickLogVideo.videoTitle,
-      videoThumbnail: quickLogVideo.videoThumbnail,
-      tags: quickLogVideo.tags || [],
-      duration: Number(quickDuration) || 15, // ✨ 關鍵：強制轉成數字，防止字串相加導致系統崩潰
-      notes: quickNotes.trim() || undefined,
-    });
-    
-    // 3. 成功寫入資料庫後，才重置所有輸入欄位並關閉視窗
-    setQuickLogVideo(null);
-    setQuickNotes("");
-    setQuickDuration(15);
-    setQuickDate(new Date().toISOString().split("T")[0]);
-    
-  } catch (error) {
-    // 如果中間有任何閃失，會在瀏覽器主控台（F12）跳出錯誤原因
-    console.error("快速打卡儲存失敗:", error);
-    alert("儲存失敗，請打開瀏覽器主控台檢查錯誤原因。");
-  } finally {
-    // 4. ✨ 最關鍵：無論成功還是失敗，最後一定會把「正在儲存」解除鎖定！
-    setIsSubmitting(false);
-  }
-};
+        const handleQuickLogSubmit = async () => {
+          if (!quickLogVideo) return;
+          
+          setIsSubmitting(true);
+          
+          try {
+            const targetDate = quickDate || new Date().toISOString().split("T")[0];
+            
+            await onQuickCheckIn({
+              date: targetDate,
+              videoUrl: quickLogVideo.videoUrl,
+              videoTitle: quickLogVideo.videoTitle,
+              videoThumbnail: quickLogVideo.videoThumbnail,
+              tags: quickLogVideo.tags || [],
+              duration: Number(quickDuration) || 15,
+              notes: quickNotes.trim() || undefined,
+            });
+            
+            setQuickLogVideo(null);
+            setQuickNotes("");
+            setQuickDuration(15);
+            setQuickDate(new Date().toISOString().split("T")[0]);
+            
+          } catch (error) {
+            console.error("快速打卡儲存失敗:", error);
+            alert("儲存失敗，請打開瀏覽器主控台檢查錯誤原因。");
+          } finally {
+            setIsSubmitting(false);
+          }
+        };
 
         const handleSaveTags = () => {
           if (!editingTagsVideo) return;
@@ -1271,7 +1282,7 @@ const handleQuickLogSubmit = async () => {
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                     placeholder="輸入關鍵字"
-		    className="w-full pl-9 pr-3 py-2 bg-white border border-slate-200 rounded-xl text-xs focus:ring-1.5 focus:ring-indigo-400/50 focus:outline-none"
+		                className="w-full pl-9 pr-3 py-2 bg-white border border-slate-200 rounded-xl text-xs focus:ring-1.5 focus:ring-indigo-400/50 focus:outline-none"
                   />
                 </div>
 
@@ -1293,50 +1304,48 @@ const handleQuickLogSubmit = async () => {
                 </div>
               </div>
 
-{/* Tag filtering pills */}
-<div className="space-y-2 border-t border-slate-100/60 pt-3">
-  {/* 第一行 */}
-  <div className="flex flex-wrap gap-1">
-    {["全部", "線上", "實體"].map((tag) => {
-      const isSelected = selectedTag === tag;
-      return (
-        <button
-          key={tag}
-          onClick={() => setSelectedTag(tag)}
-          // 統一加上 border 基礎屬性，解決位移問題
-          className={`px-3 py-1.5 text-xs font-bold rounded-xl transition border ${
-            isSelected
-              ? "bg-indigo-600 text-white border-indigo-600 shadow-xs"
-              : "bg-white/60 text-slate-500 border-slate-200/55 hover:bg-white"
-          }`}
-        >
-          {tag}
-        </button>
-      );
-    })}
-  </div>
-  
-  {/* 第二行 */}
-  <div className="flex flex-wrap gap-1">
-    {["肩頸", "背部", "核心", "臀部", "腿部", "伸展"].map((tag) => {
-      const isSelected = selectedTag === tag;
-      return (
-        <button
-          key={tag}
-          onClick={() => setSelectedTag(tag)}
-          // 統一加上 border 基礎屬性，解決位移問題
-          className={`px-3 py-1.5 text-xs font-bold rounded-xl transition border ${
-            isSelected
-              ? "bg-indigo-600 text-white border-indigo-600 shadow-xs"
-              : "bg-white/60 text-slate-500 border-slate-200/55 hover:bg-white"
-          }`}
-        >
-          {tag}
-        </button>
-      );
-    })}
-  </div>
-		</div>
+              {/* Tag filtering pills */}
+              <div className="space-y-2 border-t border-slate-100/60 pt-3">
+                {/* 第一行 */}
+                <div className="flex flex-wrap gap-1">
+                  {["釘選","全部", "線上", "實體"].map((tag) => {
+                    const isSelected = selectedTag === tag;
+                    return (
+                      <button
+                        key={tag}
+                        onClick={() => setSelectedTag(tag)}
+                        className={`px-3 py-1.5 text-xs font-bold rounded-xl transition border ${
+                          isSelected
+                            ? "bg-indigo-600 text-white border-indigo-600 shadow-xs"
+                            : "bg-white/60 text-slate-500 border-slate-200/55 hover:bg-white"
+                        }`}
+                      >
+                        {tag}
+                      </button>
+                    );
+                  })}
+                </div>
+                
+                {/* 第二行 */}
+                <div className="flex flex-wrap gap-1">
+                  {["肩頸", "背部", "核心", "臀部", "腿部", "伸展"].map((tag) => {
+                    const isSelected = selectedTag === tag;
+                    return (
+                      <button
+                        key={tag}
+                        onClick={() => setSelectedTag(tag)}
+                        className={`px-3 py-1.5 text-xs font-bold rounded-xl transition border ${
+                          isSelected
+                            ? "bg-indigo-600 text-white border-indigo-600 shadow-xs"
+                            : "bg-white/60 text-slate-500 border-slate-200/55 hover:bg-white"
+                        }`}
+                      >
+                        {tag}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
             </div>
 
             {/* Video Cards list Grid */}
@@ -1442,34 +1451,38 @@ const handleQuickLogSubmit = async () => {
 
                         {/* Tags and Action footer */}
                         <div className="pt-3 border-t border-slate-100/60 flex items-center justify-between gap-2">
-                          <div className="flex flex-wrap gap-0.5 max-w-[124px] overflow-hidden">
+                          
+                          {/* 標籤區塊 (單行、最多顯示4個包含 +N) */}
+                          <div className="flex items-center gap-1.5 flex-1 min-w-0 overflow-hidden whitespace-nowrap">
                             {video.tags && video.tags.length > 0 ? (
-                              video.tags.slice(0, 2).map((t) => (
-                                <span
-                                  key={t}
-                                  className="px-1.5 py-0.5 rounded text-[8px] font-bold text-indigo-700 bg-indigo-50/70 border border-indigo-100/40 font-mono"
-                                >
-                                  {t}
-                                </span>
-                              ))
+                              <>
+                                {(video.tags.length > 4 ? video.tags.slice(0, 3) : video.tags).map((t) => (
+                                  <span
+                                    key={t}
+                                    className="px-2 py-1 rounded-md text-[10px] font-bold text-indigo-700 bg-indigo-50/90 border border-indigo-200/60 shrink-0"
+                                  >
+                                    {t}
+                                  </span>
+                                ))}
+                                {video.tags.length > 4 && (
+                                  <span className="px-2 py-1 rounded-md text-[10px] font-bold text-slate-500 bg-slate-100 border border-slate-200/80 shrink-0">
+                                    +{video.tags.length - 3}
+                                  </span>
+                                )}
+                              </>
                             ) : (
-                              <span className="text-[8px] text-slate-405 italic">無分類</span>
-                            )}
-                            {video.tags && video.tags.length > 2 && (
-                              <span className="px-1.5 py-0.5 rounded text-[8px] font-bold text-slate-400 bg-slate-100 border border-slate-200/50">
-                                +{video.tags.length - 2}
-                              </span>
+                              <span className="text-[10px] text-slate-400 italic shrink-0">無分類</span>
                             )}
                           </div>
 
-                          {/* Action buttons (Edit tag, Reclass) */}
-                          <div className="flex items-center gap-1.5">
+                          {/* 操作按鈕 */}
+                          <div className="flex items-center gap-1.5 shrink-0">
                             <button
                               title="編輯標籤"
                               onClick={() => handleOpenEditTags(video)}
-                              className="flex items-center justify-center gap-1.5 h-8.5 px-3 border border-slate-200 bg-white hover:bg-slate-50 text-slate-600 text-xs font-medium rounded-xl transition-colors"
+                              className="flex items-center justify-center gap-1.5 py-1 px-2.5 border border-slate-200 bg-white hover:bg-slate-50 text-slate-600 text-[11px] font-bold rounded-lg transition-colors"
                             >
-                              <SVGIcon name="ClipboardEdit" className="w-3.5 h-7 text-indigo-600" />
+                              <SVGIcon name="ClipboardEdit" className="w-3.5 h-3.5 text-indigo-600" />
                               <span>編輯</span>
                             </button>
 
@@ -1477,11 +1490,11 @@ const handleQuickLogSubmit = async () => {
                               onClick={() => {
                                 setQuickLogVideo(video);
                                 setQuickDuration(video.latestDuration || 15);
-				setQuickDate(new Date().toISOString().split("T")[0]);
+                                setQuickDate(new Date().toISOString().split("T")[0]);
                               }}
-                              className="flex items-center justify-center gap-1.5 h-8.5 px-3 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-medium rounded-xl transition-colors shadow-xs"
+                              className="flex items-center justify-center gap-1 py-1 px-2.5 bg-indigo-600 hover:bg-indigo-700 text-white text-[11px] font-bold rounded-lg transition-colors shadow-xs"
                             >
-                              <SVGIcon name="Plus" className="w-3 h-7 text-indigo-100" />
+                              <SVGIcon name="Plus" className="w-3.5 h-3.5 text-indigo-100" />
                               <span>再次上課</span>
                             </button>
                           </div>
@@ -1510,30 +1523,30 @@ const handleQuickLogSubmit = async () => {
                     <p className="text-xs font-bold text-slate-850 leading-tight truncate-3">{quickLogVideo.videoTitle}</p>
                   </div>
 
-{/* 1. 打卡日期欄位 */}
-<div className="space-y-1">
-  <label className="text-[10px] font-bold text-slate-500 uppercase block">打卡日期</label>
-  <input
-    type="date"
-    value={quickDate}
-    onChange={(e) => setQuickDate(e.target.value)}
-    className="w-full h-10 px-3 border border-slate-200 bg-slate-50/50 rounded-xl text-xs font-sans text-left appearance-none focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
-  />
-</div>
+                  {/* 1. 打卡日期欄位 */}
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-bold text-slate-500 uppercase block">打卡日期</label>
+                    <input
+                      type="date"
+                      value={quickDate}
+                      onChange={(e) => setQuickDate(e.target.value)}
+                      className="w-full h-10 px-3 border border-slate-200 bg-slate-50/50 rounded-xl text-xs font-sans text-left appearance-none focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+                    />
+                  </div>
 
-{/* 2. 練習時長欄位 */}
-<div className="space-y-1 mt-3">
-  <label className="text-[10px] font-bold text-slate-500 uppercase block">練習時長</label>
-  <input
-    type="number"
-    inputMode="numeric"
-    pattern="[0-9]*"
-    min="1"
-    value={quickDuration}
-    onChange={(e) => setQuickDuration(e.target.value)}
-    className="w-full h-10 px-3 border border-slate-200 bg-slate-50/50 rounded-xl text-xs font-sans text-left appearance-none focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
-  />
-</div>
+                  {/* 2. 練習時長欄位 */}
+                  <div className="space-y-1 mt-3">
+                    <label className="text-[10px] font-bold text-slate-500 uppercase block">練習時長</label>
+                    <input
+                      type="number"
+                      inputMode="numeric"
+                      pattern="[0-9]*"
+                      min="1"
+                      value={quickDuration}
+                      onChange={(e) => setQuickDuration(e.target.value)}
+                      className="w-full h-10 px-3 border border-slate-200 bg-slate-50/50 rounded-xl text-xs font-sans text-left appearance-none focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+                    />
+                  </div>
 
                   <div className="flex gap-2 pt-1.5">
                     <button onClick={() => setQuickLogVideo(null)} className="flex-grow py-2 bg-slate-100 rounded-xl font-bold text-xs text-slate-650 hover:bg-slate-200">取消</button>
@@ -1634,6 +1647,9 @@ const handleQuickLogSubmit = async () => {
         const [logs, setLogs] = useState([]);
         const [loading, setLoading] = useState(true);
         const [activeTab, setActiveTab] = useState("check-in");
+        
+        // 💡 1. 控制資料管理視窗的顯示狀態
+        const [showDataModal, setShowDataModal] = useState(false);
 
         // Selected Calendar date string
         const [selectedDate, setSelectedDate] = useState(() => {
@@ -1664,6 +1680,57 @@ const handleQuickLogSubmit = async () => {
           }
         }, []);
 
+        // 💡 2. 處理資料匯出與匯入的方法
+        const handleExportData = () => {
+          try {
+            const dataToExport = {
+              logs: logs,
+              pinned: JSON.parse(localStorage.getItem(PIN_STORAGE_KEY) || "[]")
+            };
+            const dataStr = JSON.stringify(dataToExport, null, 2);
+            const dataBlob = new Blob([dataStr], { type: "application/json" });
+            const url = URL.createObjectURL(dataBlob);
+            const link = document.createElement("a");
+            link.href = url;
+            link.download = `pilates_backup_${new Date().toISOString().split('T')[0]}.json`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url);
+          } catch (e) {
+            alert("匯出失敗：" + e.message);
+          }
+        };
+
+        const handleImportData = (event) => {
+          const file = event.target.files[0];
+          if (!file) return;
+
+          const reader = new FileReader();
+          reader.onload = (e) => {
+            try {
+              const importedData = JSON.parse(e.target.result);
+              if (importedData && importedData.logs) {
+                if (window.confirm("匯入將會覆蓋目前所有資料，確定要繼續嗎？")) {
+                  localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(importedData.logs));
+                  if (importedData.pinned) {
+                    localStorage.setItem(PIN_STORAGE_KEY, JSON.stringify(importedData.pinned));
+                  }
+                  
+                  alert("匯入成功");
+                  window.location.reload();
+                }
+              } else {
+                alert("檔案格式不正確，請選擇正確的 .json 檔");
+              }
+            } catch (error) {
+              alert("讀取檔案失敗：" + error.message);
+            }
+          };
+          reader.readAsText(file);
+          event.target.value = '';
+        };
+
         const saveToLocal = (updated) => {
           setLogs(updated);
           try {
@@ -1678,22 +1745,31 @@ const handleQuickLogSubmit = async () => {
           const createdAt = Date.now();
           const newLog = { ...logData, id, createdAt };
 
-          const updated = [newLog, ...logs].sort((a, b) => {
-            const dd = b.date.localeCompare(a.date);
-            if (dd !== 0) return dd;
-            return b.createdAt - a.createdAt;
+          setLogs((prevLogs) => {
+            const updated = [newLog, ...prevLogs].sort((a, b) => {
+              const dd = b.date.localeCompare(a.date);
+              if (dd !== 0) return dd;
+              return b.createdAt - a.createdAt;
+            });
+            localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(updated));
+            return updated;
           });
-          saveToLocal(updated);
         };
 
         const deleteLog = async (id) => {
-          const updated = logs.filter(l => l.id !== id);
-          saveToLocal(updated);
+          setLogs((prevLogs) => {
+            const updated = prevLogs.filter(l => l.id !== id);
+            localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(updated));
+            return updated;
+          });
         };
 
         const updateLog = async (id, fields) => {
-          const updated = logs.map(l => l.id === id ? { ...l, ...fields } : l);
-          saveToLocal(updated);
+          setLogs((prevLogs) => {
+            const updated = prevLogs.map(l => l.id === id ? { ...l, ...fields } : l);
+            localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(updated));
+            return updated;
+          });
         };
 
         return (
@@ -1706,12 +1782,18 @@ const handleQuickLogSubmit = async () => {
             {/* Navigation Header bar bar */}
             <header className="fixed top-0 left-0 right-0 z-40 bg-white/40 backdrop-blur-xl border-b border-white/60 shadow-xs">
               <div className="max-w-7xl mx-auto px-4 md:px-6 h-16 flex items-center justify-between relative z-10">
-                <div className="flex items-center gap-2.5">
-                  <div className="p-2 bg-indigo-600 text-white rounded-2xl flex items-center justify-center shadow-lg shadow-indigo-200">
+                
+                {/* 💡 3. 將 Header 左側 LOGO 改為觸發匯出匯入彈跳視窗的按鈕 */}
+                <button
+                  onClick={() => setShowDataModal(true)}
+                  className="flex items-center gap-2.5 text-left cursor-pointer group focus:outline-none"
+                  title="資料備份與匯出匯入"
+                >
+                  <div className="p-2 bg-indigo-600 group-hover:bg-indigo-700 transition text-white rounded-2xl flex items-center justify-center shadow-lg shadow-indigo-200 scale-100 active:scale-95 duration-150">
                     <SVGIcon name="Flower" className="w-5 h-5 text-indigo-100" />
                   </div>
-                  <h1 className="text-sm font-extrabold text-slate-900 tracking-tight">皮拉提斯訓練紀錄</h1>
-                </div>
+                  <h1 className="text-sm font-extrabold text-slate-900 tracking-tight group-hover:text-indigo-900 transition">皮拉提斯訓練紀錄</h1>
+                </button>
 
                 {/* Switching Tabs */}
                 <div className="bg-white/60 backdrop-blur-md border border-white/85 p-1 rounded-xl flex items-center gap-1 shadow-2xs">
@@ -1771,6 +1853,47 @@ const handleQuickLogSubmit = async () => {
                 </div>
               )}
             </main>
+
+            {showDataModal && ReactDOM.createPortal(
+              <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-[2px] flex items-center justify-center p-4 z-50 animate-fade-in">
+                <div className="bg-white rounded-[2rem] p-6 max-w-sm w-full space-y-4 shadow-xl border border-slate-150 relative z-50">
+                  <div className="flex justify-between items-center border-b pb-2">
+                    <span className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
+                      <span>資料備份與還原</span>
+                    </span>
+                    <button onClick={() => setShowDataModal(false)} className="text-slate-450 hover:text-slate-650">✕</button>
+                  </div>
+
+                  <div className="space-y-4">
+                    <div className="space-y-2.5 pt-1">
+                      {/* 匯出按鈕 */}
+                      <button
+                        onClick={handleExportData}
+                        className="w-full py-2.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 rounded-xl font-bold text-xs transition flex items-center justify-center gap-2 cursor-pointer shadow-sm">
+                        <span>匯出資料</span>
+                      </button>
+
+                      {/* 匯入按鈕 */}
+                      <label className="w-full py-2.5 bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 rounded-xl font-bold text-xs transition flex items-center justify-center gap-2 cursor-pointer shadow-sm">
+                        <span>匯入資料</span>
+                        <input
+                          type="file"
+                          accept=".json"
+                          className="hidden"
+                          onChange={handleImportData}
+                        />
+                      </label>
+                      
+                      <p className="text-[9px] text-rose-500 text-center font-bold mt-1">
+                        匯入全新檔案會覆寫目前畫面上所有的紀錄
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>,
+              document.body
+            )}
+            
           </div>
         );
       }
