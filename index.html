@@ -1565,31 +1565,31 @@
 
                   {/* 1. Modify Title */}
                   <div className="space-y-1">
-                    <label className="text-[10px] font-bold text-slate-500 uppercase block">課程名稱：</label>
-                    <textarea
-                      rows={2}
+                    <label className="text-[10px] font-bold text-slate-500 uppercase block">課程名稱</label>
+                    <input
+                      type="text"
                       value={editingVideoTitle}
                       onChange={(e) => setEditingVideoTitle(e.target.value)}
-                      placeholder="請輸入課程名稱..."
+                      placeholder="請輸入課程名稱"
                       className="w-full px-3 py-2 bg-slate-50/50 border rounded-xl text-xs"
                     />
                   </div>
 
                   {/* 2. Modify Thumbnail link */}
                   <div className="space-y-1">
-                    <label className="text-[10px] font-bold text-slate-500 uppercase block">自訂縮圖網址 (選填)：</label>
+                    <label className="text-[10px] font-bold text-slate-500 uppercase block">圖片網址</label>
                     <input
                       type="text"
                       value={editingVideoThumbnail}
                       onChange={(e) => setEditingVideoThumbnail(e.target.value)}
-                      placeholder="請輸入 Unsplash、imgur 等圖片連結..."
+                      placeholder="請輸入圖片網址"
                       className="w-full px-3 py-2 bg-slate-50/50 border rounded-xl text-xs"
                     />
                   </div>
 
                   {/* 3. Modify Tags checkbox */}
                   <div className="space-y-2">
-                    <label className="text-[10px] font-bold text-slate-500 uppercase block">分類標籤勾選：</label>
+                    <label className="text-[10px] font-bold text-slate-500 uppercase block">分類標籤</label>
                     <div className="grid grid-cols-2 gap-2">
                       {["線上", "實體", "肩頸", "背部", "核心", "臀部", "腿部", "伸展"].map((tag) => {
                         const hasSelected = tagFormSelected.includes(tag);
