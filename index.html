@@ -266,7 +266,7 @@
       const getCleanThumbnail = (url) => {
         if (!url) return "";
         if (url.includes("ytimg.com") || url.includes("youtube.com")) {
-          return url.replace("mqdefault.jpg", "hqdefault.jpg");
+          return url.replace("mqdefault.jpg", "maxresdefault.jpg").replace("hqdefault.jpg", "maxresdefault.jpg");
         }
         return url;
       };
@@ -290,11 +290,11 @@
           const ytMatch = url.match(ytRegex);
           if (ytMatch) {
             videoId = ytMatch[1];
-            thumbnail = `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`;
+            thumbnail = `https://img.youtube.com/vi/${videoId}/maxresdefault.jpg`;
             title = "YouTube 皮拉提斯課程";
           } else if (url.includes("vimeo.com")) {
             title = "Vimeo 運動課程影片";
-            thumbnail = "https://images.unsplash.com/photo-1518611012118-696072aa579a?auto=format&fit=crop&q=80&w=600";
+            thumbnail = "https://www.wlan-business.org/wp-content/uploads/2022/03/noimage-1-760x460-1.png";
           }
         } catch (e) {
           console.error(e);
@@ -345,7 +345,7 @@
           map.set("https://pilates.app/reformer-class-sculpture", {
             url: "https://pilates.app/reformer-class-sculpture",
             title: "全方位體態雕塑",
-            thumbnail: "https://images.unsplash.com/photo-1518611012118-696072aa579a?auto=format&fit=crop&q=80&w=600",
+            thumbnail: "https://www.wlan-business.org/wp-content/uploads/2022/03/noimage-1-760x460-1.png",
             tags: ["器械", "實體"],
             duration: 60,
             latestTimestamp: 0,
