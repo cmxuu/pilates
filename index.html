@@ -1407,18 +1407,6 @@
                           </span>
                         </div>
 
-                        {/* External floating link */}
-                        {!video.videoUrl.includes("reformer") && (
-                          <a
-                            href={video.videoUrl}
-                            target="_blank"
-                            rel="noreferrer"
-                            className="absolute bottom-3 right-3 p-2 bg-white/95 hover:bg-white text-slate-700 hover:text-slate-900 hover:scale-107 rounded-full shadow-md duration-200 z-10"
-                            title="開啟影片網址"
-                          >
-                            <SVGIcon name="ExternalLink" className="w-3.5 h-3.5" />
-                          </a>
-                        )}
 
                         {/* Hover overlay */}
                         {video.videoUrl.includes("reformer") ? null : (
