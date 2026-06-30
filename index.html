@@ -44,7 +44,6 @@
     </script>
 
     <style>
-      /* Smooth Fade Animation */
       @keyframes fadeIn {
         from { opacity: 0; transform: translateY(10px); }
         to { opacity: 1; transform: translateY(0); }
@@ -57,7 +56,7 @@
       }
     </style>
   </head>
-  <body class="min-h-screen bg-[#f8fafc] text-slate-800 antialiased selection:bg-indigo-100 selection:text-indigo-800">
+  <body class="min-h-screen bg-[#f8fafc] text-slate-800 antialiased selection:bg-blue-100 selection:text-blue-800">
 
     <div id="root"></div>
 
@@ -65,9 +64,9 @@
       const { useState, useEffect, useMemo, useCallback } = React;
 
       const LOCAL_STORAGE_KEY = "pilates_logs_local";
+      const MENSTRUAL_STORAGE_KEY = "pilates_menstrual_local";
       const PIN_STORAGE_KEY = "pinned_pilates_videos";
 
-      // 100% Standalone Offline-ready SVG Icon Component
       function SVGIcon({ name, className = "w-5 h-5", ...props }) {
         const icons = {
           Flower: (
@@ -76,6 +75,11 @@
               <path d="M12 22V12" />
               <path d="m12 12-4 4" />
               <path d="m12 12 4 4" />
+            </svg>
+          ),
+          Droplet: (
+            <svg className={className} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" {...props}>
+              <path d="M12 22a7 7 0 0 0 7-7c0-2-1-3.9-3-5.5s-3.5-4-4-6.5c-.5 2.5-2 4.9-4 6.5C6 11.1 5 13 5 15a7 7 0 0 0 7 7z" />
             </svg>
           ),
           CalendarDays: (
@@ -262,7 +266,6 @@
         return icons[name] || icons.Flower;
       }
 
-      // Utility to clean thumbnails
       const getCleanThumbnail = (url) => {
         if (!url) return "";
         if (url.includes("ytimg.com") || url.includes("youtube.com")) {
@@ -271,13 +274,11 @@
         return url;
       };
 
-      // Helper to find cached video log
       const findCachedVideo = (url, logsList) => {
         if (!url) return null;
         return logsList.find((l) => l.videoUrl === url);
       };
 
-      // Client-side instant video analysis for 100% offline compatibility
       const extractVideoMetaClient = (url) => {
         let videoId = "";
         let thumbnail = "https://images.unsplash.com/photo-1544367567-0f2fcb009e0b?auto=format&fit=crop&q=80&w=600";
@@ -285,7 +286,6 @@
         let tags = ["核心"];
 
         try {
-          // Youtube Regex
           const ytRegex = /(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^"&?\/\s]{11})/i;
           const ytMatch = url.match(ytRegex);
           if (ytMatch) {
@@ -302,8 +302,7 @@
         return { title, thumbnail, tags };
       };
 
-      // CheckInPage Sub-component
-      function CheckInPage({ logs, onAddLog, onDeleteLog, onUpdateLog, selectedDate, onSelectDate }) {
+      function CheckInPage({ logs, onAddLog, onDeleteLog, onUpdateLog, selectedDate, onSelectDate, menstrualDates, onToggleMenstrualDate }) {
         const [workoutType, setWorkoutType] = useState("video");
         const [videoUrl, setVideoUrl] = useState("");
         const [isFetchingInfo, setIsFetchingInfo] = useState(false);
@@ -312,27 +311,26 @@
         const [parsedMeta, setParsedMeta] = useState(null);
         const [customTitle, setCustomTitle] = useState("");
         const [duration, setDuration] = useState(15);
-        const [notes, setNotes] = useState("");
+        const [expectedTime, setExpectedTime] = useState(""); // 💡 新增預定時間狀態
         const [selectedTags, setSelectedTags] = useState([]);
 
-        // Dialog edit/delete locks
         const [logToDelete, setLogToDelete] = useState(null);
         const [logToEditDuration, setLogToEditDuration] = useState(null);
         const [editingDuration, setEditingDuration] = useState(15);
 
-        // Date Picker bounds
         const [currentYear, setCurrentYear] = useState(() => new Date().getFullYear());
         const [currentMonth, setCurrentMonth] = useState(() => new Date().getMonth());
 
         const [loggingProgress, setLoggingProgress] = useState(false);
         const [showAddForm, setShowAddForm] = useState(false);
+        
+        const [isMenstrualEditMode, setIsMenstrualEditMode] = useState(false);
+
         const [reformerPreset, setReformerPreset] = useState("https://pilates.app/reformer-class-pilates");
 
-        // Dynamically extract physical courses from logs, newest first
         const physicalCourses = useMemo(() => {
           const map = new Map();
 
-          // Seed default courses
           map.set("https://pilates.app/reformer-class-pilates", {
             url: "https://pilates.app/reformer-class-pilates",
             title: "器械皮拉提斯",
@@ -371,7 +369,6 @@
           return Array.from(map.values()).sort((a, b) => b.latestTimestamp - a.latestTimestamp);
         }, [logs]);
 
-        // Preset state initialization
         useEffect(() => {
           if (workoutType === "reformer") {
             let targetUrl = "https://pilates.app/reformer-class-pilates";
@@ -464,14 +461,6 @@
           }, 350);
         };
 
-        const handleToggleTag = (tag) => {
-          if (selectedTags.includes(tag)) {
-            setSelectedTags(selectedTags.filter((t) => t !== tag));
-          } else {
-            setSelectedTags([...selectedTags, tag]);
-          }
-        };
-
         const handleCreateCheckIn = async () => {
           if (!parsedMeta) return;
           setLoggingProgress(true);
@@ -497,28 +486,34 @@
               finalTags = workoutType === "reformer" ? ["實體"] : ["線上"];
             }
 
+            const todayStr = new Date().toISOString().split("T")[0];
+            const isCompleted = selectedDate <= todayStr;
+
             await onAddLog({
               date: selectedDate,
               videoUrl: finalUrl,
               videoTitle: trimTitle || (workoutType === "reformer" ? "未命名實體課" : "未命名排課"),
               videoThumbnail: parsedMeta.thumbnail,
               tags: finalTags,
-              notes: undefined,
               duration: duration || 15,
+              isCompleted: isCompleted,
+              expectedTime: (!isCompleted && workoutType === "reformer") ? expectedTime : undefined, // 💡 儲存預定時間
             });
 
             setVideoUrl("");
             setParsedMeta(null);
             setDuration(15);
+            setExpectedTime("");
             setShowAddForm(false);
             setLoggingProgress(false);
           }, 200);
         };
 
-        // Date calculation structures
         const checkedDates = useMemo(() => {
           const dates = new Set();
-          logs.forEach((log) => dates.add(log.date));
+          logs.forEach((log) => {
+            if (log.isCompleted !== false) dates.add(log.date);
+          });
           return dates;
         }, [logs]);
 
@@ -541,7 +536,9 @@
           }
 
           const monthPrefix = `${currentYear}-${(currentMonth + 1) < 10 ? "0" + (currentMonth + 1) : currentMonth + 1}`;
-          const thisMonthWorkouts = new Set(logs.filter((log) => log.date.startsWith(monthPrefix)).map(log => log.date)).size;
+          const thisMonthWorkouts = new Set(
+            logs.filter((log) => log.date.startsWith(monthPrefix) && log.isCompleted !== false).map(log => log.date)
+          ).size;
 
           return {
             currentStreak,
@@ -594,20 +591,20 @@
           return daysList;
         }, [currentYear, currentMonth]);
 
+        const todayStr = new Date().toISOString().split("T")[0];
+        const isFutureDate = selectedDate > todayStr;
+
         return (
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-            {/* Left Column Calendar */}
             <div className="lg:col-span-7 space-y-6">
               
-              {/* Unified Calendar & Seamless Stats Grid without outer boxes for stats */}
               <div className="bg-white/50 backdrop-blur-xl border border-white/80 rounded-3xl shadow-xs p-6">
                 
-                {/* Seamless Stats Header (Directly showing streak without boxes) */}
                 <div className="flex justify-between items-center mb-6 px-2">
                   <div className="flex flex-col items-center flex-1">
                     <span className="text-[11px] text-slate-400 font-bold mb-1">連續打卡</span>
                     <div className="flex items-baseline gap-0.5">
-                      <span className="text-xl font-bold text-indigo-600">{stats.currentStreak}</span>
+                      <span className="text-xl font-bold text-blue-600">{stats.currentStreak}</span>
                       <span className="text-xs text-slate-500 font-medium">天</span>
                     </div>
                   </div>
@@ -629,10 +626,8 @@
                   </div>
                 </div>
 
-                {/* Light Divider */}
                 <div className="h-px w-full bg-gradient-to-r from-transparent via-slate-200 to-transparent mb-4"></div>
 
-                {/* Calendar Header with Back to Today capability */}
                 <div className="flex justify-between items-center mb-6 px-1">
                   <button 
                     className="text-lg font-bold text-slate-900 cursor-pointer hover: transition flex items-center gap-1.5 group focus:outline-none"
@@ -693,37 +688,60 @@
                   ))}
                 </div>
 
-                {/* Adjusted Calendar Days: round circles, no dots below, smaller vertical gaps */}
                 <div className="grid grid-cols-7 gap-y-1.5 gap-x-1">
                   {calendarDays.map((item, idx) => {
-                    const isChecked = checkedDates.has(item.dateString);
+                    const hasCompletedCourse = checkedDates.has(item.dateString);
+                    const hasPlannedCourse = logs.some(l => l.date === item.dateString && l.isCompleted === false);
                     const isSelected = selectedDate === item.dateString;
                     const isToday = new Date().toISOString().split("T")[0] === item.dateString;
+                    const isMenstrualDay = menstrualDates.includes(item.dateString);
 
                     let btnClass = "relative w-9 h-9 sm:w-10 sm:h-10 mx-auto rounded-full flex items-center justify-center transition cursor-pointer text-[13px] font-bold border ";
 
-                    if (isSelected) {
-                      if (isChecked) {
-                        btnClass += "bg-indigo-600 text-white border-indigo-600 shadow-md";
+                    if (isMenstrualEditMode) {
+                      if (isMenstrualDay) {
+                        btnClass += "bg-rose-400 text-white border-rose-500 shadow-md ring-2 ring-rose-200 ring-offset-1";
                       } else {
-                        btnClass += "bg-white text-indigo-600 border-indigo-600 shadow-sm";
+                        btnClass += "bg-white text-slate-400 border-slate-200 hover:bg-rose-50 hover:text-rose-400";
                       }
                     } else {
-                      if (isChecked) {
-                        btnClass += "bg-indigo-400 text-white border-transparent shadow-sm hover:bg-indigo-500";
-                      } else if (isToday) {
-                        btnClass += "bg-indigo-50/80 text-indigo-700 border-indigo-200/50 hover:bg-indigo-100";
-                      } else if (item.isCurrentMonth) {
-                        btnClass += "text-slate-700 border-transparent hover:bg-white/80";
+                      if (isSelected) {
+                        if (hasCompletedCourse) {
+                          btnClass += "bg-blue-500 text-white border-blue-500 shadow-md";
+                        } else if (hasPlannedCourse) {
+                          btnClass += "bg-slate-500 text-white border-slate-500 shadow-md"; // 💡 預定的選中狀態圓圈
+                        } else if (isMenstrualDay) {
+                          btnClass += "bg-rose-400 text-white border-rose-400 shadow-md";
+                        } else {
+                          btnClass += "bg-white text-blue-500 border-blue-500 shadow-sm";
+                        }
                       } else {
-                        btnClass += "text-slate-300 border-transparent hover:bg-white/40";
+                        if (hasCompletedCourse) {
+                          btnClass += "bg-blue-100 text-blue-500 border-transparent shadow-sm hover:bg-blue-200";
+                        } else if (hasPlannedCourse) {
+                          btnClass += "bg-slate-200 text-slate-500 border-transparent shadow-sm hover:bg-slate-300"; // 💡 預定的未選狀態圓圈
+                        } else if (isMenstrualDay) {
+                          btnClass += "bg-rose-100 text-rose-500 border-transparent hover:bg-rose-200";
+                        } else if (isToday) {
+                          btnClass += "bg-blue-50/80 text-blue-700 border-blue-200/50 hover:bg-blue-100";
+                        } else if (item.isCurrentMonth) {
+                          btnClass += "text-slate-700 border-transparent hover:bg-white/80";
+                        } else {
+                          btnClass += "text-slate-300 border-transparent hover:bg-white/40";
+                        }
                       }
                     }
 
                     return (
                       <button
                         key={idx}
-                        onClick={() => onSelectDate(item.dateString)}
+                        onClick={() => {
+                          if (isMenstrualEditMode) {
+                            onToggleMenstrualDate(item.dateString);
+                          } else {
+                            onSelectDate(item.dateString);
+                          }
+                        }}
                         className={btnClass}
                       >
                         {item.day}
@@ -734,15 +752,13 @@
               </div>
             </div>
 
-            {/* Right Column Check-In Form and Logs */}
             <div className="lg:col-span-5 space-y-6">
               
-              {/* Expandable Add form */}
               {showAddForm && (
                 <div className="bg-white/55 backdrop-blur-md border border-white/80 rounded-3xl p-5 space-y-4 shadow-xs animate-fade-in">
                   <div className="flex justify-between items-center border-b border-slate-100 pb-2.5">
                     <span className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
-                      <SVGIcon name="BookmarkCheck" className="w-4 h-4 text-indigo-500" />
+                      <SVGIcon name="BookmarkCheck" className="w-4 h-4 text-blue-500" />
                       <span>新增訓練打卡</span>
                     </span>
                     <button
@@ -757,7 +773,6 @@
                     </button>
                   </div>
 
-                  {/* Workout Type Selector */}
                   <div className="space-y-1.5">
                     <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">訓練方式</label>
                     <div className="bg-white/40 border border-white/80 p-0.5 rounded-xl flex">
@@ -765,7 +780,7 @@
                         type="button"
                         onClick={() => setWorkoutType("video")}
                         className={`flex-1 py-1.5 text-xs font-bold rounded-lg transition-all flex items-center justify-center gap-1.5 ${
-                          workoutType === "video" ? "bg-white text-indigo-600 shadow-xs" : "text-slate-500 hover:text-slate-800"
+                          workoutType === "video" ? "bg-white text-blue-600 shadow-xs" : "text-slate-500 hover:text-slate-800"
                         }`}
                       >
                         <SVGIcon name="Video" className="w-3.5 h-3.5" />
@@ -775,16 +790,15 @@
                         type="button"
                         onClick={() => setWorkoutType("reformer")}
                         className={`flex-1 py-1.5 text-xs font-bold rounded-lg transition-all flex items-center justify-center gap-1.5 ${
-                          workoutType === "reformer" ? "bg-white text-indigo-600 shadow-xs" : "text-slate-500 hover:text-slate-800"
+                          workoutType === "reformer" ? "bg-white text-blue-600 shadow-xs" : "text-slate-500 hover:text-slate-800"
                         }`}
                       >
-                        <SVGIcon name="Sparkles" className="w-3.5 h-3.5 text-indigo-600" />
+                        <SVGIcon name="Sparkles" className="w-3.5 h-3.5 text-blue-600" />
                         <span>實體課程</span>
                       </button>
                     </div>
                   </div>
 
-                  {/* Fields conditionally based on selection */}
                   {workoutType === "video" ? (
                     <div className="space-y-1.5">
                       <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">影片網址</label>
@@ -795,7 +809,7 @@
                             value={videoUrl}
                             onChange={(e) => setVideoUrl(e.target.value)}
                             placeholder="Youtube 或 Vimeo 網址..."
-                            className="w-full pl-3 pr-8 py-2 bg-white/50 border border-white/80 rounded-xl text-xs text-slate-800 focus:outline-none focus:ring-1.5 focus:ring-indigo-400/.5"
+                            className="w-full pl-3 pr-8 py-2 bg-white/50 border border-white/80 rounded-xl text-xs text-slate-800 focus:outline-none focus:ring-1.5 focus:ring-blue-400/.5"
                           />
                           {videoUrl && (
                             <button onClick={() => setVideoUrl("")} className="absolute right-2.5 top-2.5 text-slate-400 hover:text-slate-600 text-xs">✕</button>
@@ -816,7 +830,7 @@
                     </div>
                   ) : (
                     <div className="space-y-1">
-                      <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">課程主選單</label>
+                      <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">課程選單</label>
                       <select
                         value={reformerPreset}
                         onChange={(e) => setReformerPreset(e.target.value)}
@@ -832,7 +846,6 @@
                     </div>
                   )}
 
-                  {/* Metadata display & customize forms */}
                   {parsedMeta && (
                     <div className="space-y-4 pt-2.5 border-t border-slate-100 animate-fade-in">
                       <div className="flex gap-3 bg-white/75 p-2 border border-white/95 rounded-2xl">
@@ -844,8 +857,8 @@
                           />
                         </div>
                         <div className="space-y-1 overflow-hidden flex-1">
-                          <span className="text-[9px] font-bold bg-indigo-50 text-indigo-700 px-1.5 py-0.5 rounded uppercase font-sans">
-                            {workoutType === "reformer" ? "實體課堂模式" : "線上連結已載入"}
+                          <span className="text-[9px] font-bold bg-blue-50 text-blue-700 px-1.5 py-0.5 rounded uppercase font-sans">
+                            {workoutType === "reformer" ? "實體" : "線上"}
                           </span>
                           <p className="text-xs text-slate-800 font-bold truncate leading-tight">
                             {customTitle || "請輸入課程名稱"}
@@ -854,7 +867,6 @@
                         </div>
                       </div>
 
-                      {/* Course Title Field */}
                       <div className="space-y-1">
                         <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">課程名稱</label>
                         <input
@@ -867,9 +879,8 @@
                         />
                       </div>
 
-                      {/* Duration Field */}
                       <div className="space-y-1">
-                        <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">訓練時長 (分鐘)</label>
+                        <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">訓練時長</label>
                         <div className="relative">
                           <input
                             type="number"
@@ -880,11 +891,23 @@
                             disabled={workoutType === "reformer" && reformerPreset !== "custom"}
                             className="w-full pl-3 pr-8 py-2 border border-slate-200 bg-white/50 rounded-xl text-xs font-sans"
                           />
-                          <span className="absolute right-3 top-2.5 text-[10px] text-slate-400 font-bold font-sans">MINS</span>
+                          <span className="absolute right-3 top-2.5 text-[10px] text-slate-400 font-bold font-sans">分鐘</span>
                         </div>
                       </div>
 
-                      {/* Submit */}
+                      {/* 💡 當為實體課程，且為未來日期時，顯示預定時間 */}
+                      {workoutType === "reformer" && isFutureDate && (
+                        <div className="space-y-1">
+                          <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">預定時間</label>
+                          <input
+                            type="time"
+                            value={expectedTime}
+                            onChange={(e) => setExpectedTime(e.target.value)}
+                            className="w-full px-3 py-2 border border-slate-200 bg-white/50 rounded-xl text-xs font-sans"
+                          />
+                        </div>
+                      )}
+
                       <button
                         type="button"
                         disabled={loggingProgress}
@@ -892,11 +915,11 @@
                         className="w-full py-2.5 bg-slate-950 text-white text-xs font-bold rounded-xl shadow-lg transition hover:bg-slate-850 flex justify-center items-center gap-1.5"
                       >
                         {loggingProgress ? (
-                          <div className="w-3.5 h-3.5 border-2 border-indigo-400 border-t-transparent animate-spin rounded-full"></div>
+                          <div className="w-3.5 h-3.5 border-2 border-blue-400 border-t-transparent animate-spin rounded-full"></div>
                         ) : (
                           <>
-                            <SVGIcon name="CheckCircle2" className="w-3.5 h-3.5 text-indigo-400" />
-                            <span>儲存並確認打卡</span>
+                            <SVGIcon name="CheckCircle2" className="w-3.5 h-3.5 text-white" />
+                            <span>儲存打卡</span>
                           </>
                         )}
                       </button>
@@ -905,7 +928,6 @@
                 </div>
               )}
 
-              {/* Day logs list */}
               <div className="space-y-3">
                 <div className="flex justify-between items-center">
                   <h4 className="ml-2 text-sm font-bold text-slate-800 font-sans flex items-center gap-1.5">
@@ -913,13 +935,32 @@
                     <span className="text-xs text-slate-400 font-normal">（{selectedDateLogs.length} 筆）</span>
                   </h4>
 
-                  <button
-                    onClick={() => setShowAddForm(!showAddForm)}
-                    className="flex items-center gap-1 px-3 py-1.5 bg-slate-950 text-white text-xs font-bold rounded-xl shadow-xs hover:bg-slate-800"
-                  >
-                    <SVGIcon name="Plus" className="w-3.5 h-3.5" />
-                    <span>新增</span>
-                  </button>
+                  <div className="flex items-center gap-2">
+                    {isMenstrualEditMode ? (
+                      <button
+                        onClick={() => setIsMenstrualEditMode(false)}
+                        className="p-1.5 bg-rose-500 text-white rounded-xl shadow-xs transition"
+                        title="完成設定"
+                      >
+                        <SVGIcon name="Check" className="w-4 h-4" />
+                      </button>
+                    ) : (
+                      <button
+                        onClick={() => setIsMenstrualEditMode(true)}
+                        className="px-2 py-1.5 bg-rose-100 text-rose-500 hover:bg-rose-200 rounded-xl shadow-xs transition"
+                        title="設定經期"
+                      >
+                        <SVGIcon name="Droplet" className="w-4 h-4" />
+                      </button>
+                    )}
+                    <button
+                      onClick={() => setShowAddForm(!showAddForm)}
+                      className="flex items-center gap-1 px-3 py-1.5 bg-slate-950 text-white text-xs font-bold rounded-xl shadow-xs hover:bg-slate-800"
+                    >
+                      <SVGIcon name="Plus" className="w-3.5 h-3.5" />
+                      <span>新增</span>
+                    </button>
+                  </div>
                 </div>
 
                 {selectedDateLogs.length === 0 ? (
@@ -937,8 +978,7 @@
                         className="bg-white/60 hover:bg-white/70 border border-white/80 rounded-2xl overflow-hidden shadow-2xs hover:shadow-xs transition duration-200 group relative"
                       >
                         <div className="flex items-stretch h-[84px] shrink-0">
-                          {/* Left Thumbnail */}
-                          <div className="relative w-32 shrink-0 bg-slate-50 overflow-hidden">
+                          <div className={`relative w-32 shrink-0 bg-slate-50 overflow-hidden ${log.isCompleted === false ? 'opacity-50 grayscale-[50%]' : ''}`}>
                             <img
                               src={getCleanThumbnail(log.videoThumbnail)}
                               alt="Log Preview"
@@ -957,16 +997,33 @@
                             )}
                           </div>
 
-                          {/* Detail Metadata - 💡 調整了卡片右側的上下 padding */}
                           <div className="px-3 pt-2.5 pb-1.5 select-none flex-1 min-w-0 flex flex-col justify-between">
-                            <h5 className="text-[12px] font-bold text-slate-800 leading-tight truncate">
-                              {log.videoTitle}
-                            </h5>
+                            <div className="flex justify-between items-start gap-1">
+                              <h5 className="text-[12px] font-bold text-slate-800 leading-tight truncate pt-0.5">
+                                {log.videoTitle}
+                              </h5>
+                              <button
+                                onClick={() => onUpdateLog(log.id, { isCompleted: log.isCompleted === false ? true : false })}
+                                className={`shrink-0 p-1 rounded border transition-colors ${
+                                  log.isCompleted === false
+                                    ? 'bg-white border-slate-200 text-slate-300 hover:text-blue-500 hover:border-blue-300'
+                                    : 'bg-blue-50 border-blue-200 text-blue-600 hover:bg-white hover:text-slate-400 hover:border-slate-200'
+                                }`}
+                                title={log.isCompleted === false ? '標記為已上' : '標記為預定'}
+                              >
+                                <SVGIcon name="Check" className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
 
-                            {/* 💡 加上 my-auto 強制置中 */}
                             <div className="flex items-center gap-1.5 text-[10px] text-slate-550 font-medium my-auto">
                               <SVGIcon name="Clock" className="w-3.5 h-3.5 text-slate-400 shrink-0" />
                               <span>約 {log.duration || 15} 分鐘</span>
+                              {/* 💡 預定標籤變更 */}
+                              {log.isCompleted === false && (
+                                <span className="text-slate-500 ml-1 px-1.5 py-0.5 bg-slate-100 rounded-md whitespace-nowrap">
+                                  {log.expectedTime ? `預定 ${log.expectedTime}` : "預定"}
+                                </span>
+                              )}
                             </div>
 
                             <div className="flex justify-between items-center gap-1.5">
@@ -975,7 +1032,7 @@
                                   log.tags.map((tag) => (
                                     <span
                                       key={tag}
-                                      className="px-1.5 py-0.5 text-[8px] font-bold bg-indigo-50/70 border border-indigo-100/30 text-indigo-700 rounded"
+                                      className="px-1.5 py-0.5 text-[8px] font-bold bg-blue-50/70 border border-blue-100/30 text-blue-700 rounded"
                                     >
                                       {tag}
                                     </span>
@@ -985,14 +1042,13 @@
                                 )}
                               </div>
 
-                              {/* Editing triggers */}
                               <div className="flex items-center gap-1 shrink-0">
                                 <button
                                   onClick={() => {
                                     setLogToEditDuration(log);
                                     setEditingDuration(log.duration || 15);
                                   }}
-                                  className="text-slate-400 hover:text-indigo-600 p-1"
+                                  className="text-slate-400 hover:text-blue-600 p-1"
                                   title="修改時長"
                                 >
                                   <SVGIcon name="FileEdit" className="w-3.5 h-3.5" />
@@ -1009,7 +1065,6 @@
                           </div>
                         </div>
 
-                        {/* Optional feedback comments note banner at the bottom */}
                         {log.notes && (
                           <div className="bg-white/40 px-3 py-1.5 text-[10px] text-slate-600 leading-relaxed flex items-start gap-1.5 border-t border-white/80">
                             <SVGIcon name="FileText" className="w-3" />
@@ -1023,7 +1078,6 @@
               </div>
             </div>
 
-            {/* Inner Delete Confirmation Modals */}
             {logToDelete && ReactDOM.createPortal(
               <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-[2px] flex items-center justify-center p-4 z-50 animate-fade-in">
                 <div className="bg-white rounded-3xl p-6 max-w-sm w-full space-y-4 shadow-xl border border-slate-150 relative z-50">
@@ -1055,13 +1109,12 @@
               document.body
             )}
 
-            {/* Edit Duration Modal Box */}
             {logToEditDuration && ReactDOM.createPortal(
               <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-[2px] flex items-center justify-center p-4 z-50 animate-fade-in">
                 <div className="bg-white rounded-3xl p-6 max-w-sm w-full space-y-4 shadow-xl border border-slate-150 relative z-50">
-                  <div className="flex items-center gap-3 text-indigo-600">
-                    <div className="p-2.5 bg-indigo-50 rounded-2xl">
-                      <SVGIcon name="FileEdit" className="w-5 h-5 text-indigo-600" />
+                  <div className="flex items-center gap-3 text-blue-600">
+                    <div className="p-2.5 bg-blue-50 rounded-2xl">
+                      <SVGIcon name="FileEdit" className="w-5 h-5 text-blue-600" />
                     </div>
                     <h4 className="text-sm font-bold text-slate-800">修改訓練時長</h4>
                   </div>
@@ -1091,7 +1144,7 @@
                         await onUpdateLog(logToEditDuration.id, { duration: editingDuration });
                         setLogToEditDuration(null);
                       }}
-                      className="flex-1 py-2 bg-indigo-600 text-white text-xs font-bold rounded-xl shadow-md cursor-pointer"
+                      className="flex-1 py-2 bg-blue-600 text-white text-xs font-bold rounded-xl shadow-md cursor-pointer"
                     >
                       確認修改
                     </button>
@@ -1104,7 +1157,6 @@
         );
       }
 
-      // VideoRecordsPage Sub-component
       function VideoRecordsPage({ logs, onQuickCheckIn, onUpdateLog }) {
         const [searchQuery, setSearchQuery] = useState("");
         const [selectedTag, setSelectedTag] = useState("釘選");
@@ -1112,7 +1164,7 @@
 
         const [quickLogVideo, setQuickLogVideo] = useState(null);
         const [quickDuration, setQuickDuration] = useState(15);
-        const [quickNotes, setQuickNotes] = useState("");
+        const [quickExpectedTime, setQuickExpectedTime] = useState(""); // 💡 快速打卡預定時間
         const [isSubmitting, setIsSubmitting] = useState(false);
 	      const [quickDate, setQuickDate] = useState(() => new Date().toISOString().split("T")[0]);
 
@@ -1139,19 +1191,25 @@
         const uniqueVideos = useMemo(() => {
           const map = new Map();
           logs.forEach((log) => {
+            const isCompleted = log.isCompleted !== false;
             const existing = map.get(log.videoUrl);
+
             if (existing) {
-              existing.practiceCount += 1;
-              if (log.date > existing.latestPracticeDate) {
-                existing.latestPracticeDate = log.date;
-                existing.videoTitle = log.videoTitle;
-                existing.videoThumbnail = log.videoThumbnail;
-                existing.tags = Array.from(new Set([...existing.tags, ...(log.tags || [])]));
-                existing.latestDuration = log.duration || 15;
+              if (isCompleted) {
+                existing.practiceCount += 1;
+                if (!existing.latestPracticeDate || log.date > existing.latestPracticeDate) {
+                  existing.latestPracticeDate = log.date;
+                  existing.latestDuration = log.duration || 15;
+                }
               }
               if (log.createdAt > existing.latestTimestamp) {
                 existing.latestTimestamp = log.createdAt;
-                existing.latestDuration = log.duration || existing.latestDuration || 15;
+                existing.videoTitle = log.videoTitle;
+                existing.videoThumbnail = log.videoThumbnail;
+                existing.tags = Array.from(new Set([...existing.tags, ...(log.tags || [])]));
+                if (isCompleted) {
+                  existing.latestDuration = log.duration || existing.latestDuration || 15;
+                }
               }
             } else {
               map.set(log.videoUrl, {
@@ -1159,8 +1217,8 @@
                 videoTitle: log.videoTitle,
                 videoThumbnail: log.videoThumbnail,
                 tags: [...(log.tags || [])],
-                practiceCount: 1,
-                latestPracticeDate: log.date,
+                practiceCount: isCompleted ? 1 : 0,
+                latestPracticeDate: isCompleted ? log.date : "",
                 latestTimestamp: log.createdAt,
                 latestDuration: log.duration || 15,
               });
@@ -1191,7 +1249,7 @@
           });
 
           if (sortBy === "latest") {
-            list.sort((a, b) => b.latestPracticeDate.localeCompare(a.latestPracticeDate));
+            list.sort((a, b) => (b.latestPracticeDate || "").localeCompare(a.latestPracticeDate || ""));
           } else {
             list.sort((a, b) => b.practiceCount - a.practiceCount);
           }
@@ -1208,6 +1266,9 @@
           
           try {
             const targetDate = quickDate || new Date().toISOString().split("T")[0];
+            const todayStr = new Date().toISOString().split("T")[0];
+            const isQuickFuture = targetDate > todayStr;
+            const isQuickPhysical = quickLogVideo.videoUrl.includes("reformer") || (quickLogVideo.tags || []).includes("實體");
             
             await onQuickCheckIn({
               date: targetDate,
@@ -1216,12 +1277,13 @@
               videoThumbnail: quickLogVideo.videoThumbnail,
               tags: quickLogVideo.tags || [],
               duration: Number(quickDuration) || 15,
-              notes: quickNotes.trim() || undefined,
+              isCompleted: !isQuickFuture,
+              expectedTime: (isQuickPhysical && isQuickFuture) ? quickExpectedTime : undefined // 💡 若為實體且為未來，帶入時間
             });
             
             setQuickLogVideo(null);
-            setQuickNotes("");
             setQuickDuration(15);
+            setQuickExpectedTime("");
             setQuickDate(new Date().toISOString().split("T")[0]);
             
           } catch (error) {
@@ -1264,15 +1326,16 @@
             setTagFormSelected([...tagFormSelected, tag]);
           }
         };
+        
+        const isQuickFuture = quickDate > new Date().toISOString().split("T")[0];
+        const isQuickPhysical = quickLogVideo?.videoUrl.includes("reformer") || quickLogVideo?.tags?.includes("實體");
 
         return (
           <div className="space-y-6">
             
-            {/* Control Filters panel */}
             <div className="bg-white/50 backdrop-blur-xl border border-white/80 p-5 rounded-3xl shadow-2xs space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-12 gap-3.5">
                 
-                {/* Search Bar */}
                 <div className="md:col-span-6 relative">
                   <span className="absolute left-3 top-2.5 text-slate-400">
                     <SVGIcon name="Search" className="w-3.5 h-3.5" />
@@ -1282,11 +1345,10 @@
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                     placeholder="輸入關鍵字"
-		    className="w-full pl-8 pr-3 py-2 bg-white border border-slate-200 rounded-xl text-xs focus:ring-1.5 focus:ring-indigo-400/50 focus:outline-none"
+		    className="w-full pl-8 pr-3 py-2 bg-white border border-slate-200 rounded-xl text-xs focus:ring-1.5 focus:ring-blue-400/50 focus:outline-none"
                   />
                 </div>
 
-                {/* Sort Option bar */}
                 <div className="md:col-span-6 flex gap-2">
                   <div className="relative flex-1">
                     <span className="absolute left-3 top-2.5 text-slate-400">
@@ -1295,7 +1357,7 @@
                     <select
                       value={sortBy}
                       onChange={(e) => setSortBy(e.target.value)}
-                      className="w-full pl-8 pr-3 py-2 bg-white border border-slate-200 rounded-xl text-xs focus:ring-1.5 focus:ring-indigo-400/50 focus:outline-none0"
+                      className="w-full pl-8 pr-3 py-2 bg-white border border-slate-200 rounded-xl text-xs focus:ring-1.5 focus:ring-blue-400/50 focus:outline-none0"
                     >
                       <option value="latest">依日期排序</option>
                       <option value="count">依頻率排序</option>
@@ -1304,9 +1366,7 @@
                 </div>
               </div>
 
-              {/* Tag filtering pills */}
               <div className="space-y-2 border-t border-slate-100/60 pt-3">
-                {/* 第一行 */}
                 <div className="flex flex-wrap gap-1">
                   {["釘選","全部", "線上", "實體"].map((tag) => {
                     const isSelected = selectedTag === tag;
@@ -1316,7 +1376,7 @@
                         onClick={() => setSelectedTag(tag)}
                         className={`px-3 py-1.5 text-xs font-bold rounded-xl transition border ${
                           isSelected
-                            ? "bg-indigo-600 text-white border-indigo-600 shadow-xs"
+                            ? "bg-blue-600 text-white border-blue-600 shadow-xs"
                             : "bg-white/60 text-slate-500 border-slate-200/55 hover:bg-white"
                         }`}
                       >
@@ -1326,7 +1386,6 @@
                   })}
                 </div>
                 
-                {/* 第二行 */}
                 <div className="flex flex-wrap gap-1">
                   {["肩頸", "背部", "核心", "臀部", "腿部", "伸展"].map((tag) => {
                     const isSelected = selectedTag === tag;
@@ -1336,7 +1395,7 @@
                         onClick={() => setSelectedTag(tag)}
                         className={`px-3 py-1.5 text-xs font-bold rounded-xl transition border ${
                           isSelected
-                            ? "bg-indigo-600 text-white border-indigo-600 shadow-xs"
+                            ? "bg-blue-600 text-white border-blue-600 shadow-xs"
                             : "bg-white/60 text-slate-500 border-slate-200/55 hover:bg-white"
                         }`}
                       >
@@ -1348,7 +1407,6 @@
               </div>
             </div>
 
-            {/* Video Cards list Grid */}
             {filteredVideos.length === 0 ? (
               <div className="bg-white/40 border border-white/80 border-dashed rounded-[2rem] p-12 text-center text-slate-400 max-w-sm mx-auto space-y-3">
                 <div className="flex justify-center">
@@ -1365,7 +1423,6 @@
                       key={video.videoUrl}
                       className="bg-white/55 backdrop-blur-md border border-white/80 rounded-3xl overflow-hidden shadow-xs hover:shadow-lg transition-all duration-300 hover:scale-[1.01] flex flex-col group font-sans relative"
                     >
-                      {/* Card visual elements */}
                       <div className="relative aspect-video w-full bg-slate shadow-inner shrink-0 overflow-hidden">
                         <img
                           src={getCleanThumbnail(video.videoThumbnail)}
@@ -1377,7 +1434,6 @@
                           }`}
                         />
                         
-                        {/* Pin status icon trigger */}
                         <button
                           onClick={() => togglePin(video.videoUrl)}
                           className={`absolute top-3 right-3 p-2 rounded-full backdrop-blur-md text-white transition-all duration-200 z-10 cursor-pointer shadow-sm ${
@@ -1390,12 +1446,11 @@
                           <SVGIcon name="Pin" className={`w-3.5 h-3.5 ${isPinned ? "rotate-45 fill-white" : ""}`} />
                         </button>
 
-                        {/* Count and last practice badges */}
                         <div className="absolute top-3 left-3 flex flex-col gap-1.5 z-10">
-                          <span className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[10px] font-extrabold uppercase tracking-widest bg-indigo-600/95 border border-indigo-500 text-white leading-none shadow-md font-sans">
+                          <span className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[10px] font-extrabold uppercase tracking-widest bg-blue-600/95 border border-blue-500 text-white leading-none shadow-md font-sans">
                             {video.videoUrl.includes("reformer") ? (
                               <>
-                                <SVGIcon name="Sparkles" className="w-3.5 h-3.5 text-indigo-300 animate-pulse" />
+                                <SVGIcon name="Sparkles" className="w-3.5 h-3.5 text-blue-300 animate-pulse" />
                                 <span>上課 {video.practiceCount} 堂</span>
                               </>
                             ) : (
@@ -1407,8 +1462,6 @@
                           </span>
                         </div>
 
-
-                        {/* Hover overlay */}
                         {video.videoUrl.includes("reformer") ? null : (
                           <div className="absolute inset-0 bg-slate-950/35 opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex items-center justify-center">
                             <a
@@ -1423,31 +1476,26 @@
                         )}
                       </div>
 
-                      {/* Card Text & Actions */}
                       <div className="p-4 flex-1 flex flex-col justify-between space-y-3.5">
                         <div className="space-y-1.5">
-                          <h4 className="text-[12px] sm:text-[13px] font-bold text-slate-850 leading-snug tracking-wide group-hover:text-indigo-900 transition-colors line-clamp-2">
+                          <h4 className="text-[12px] sm:text-[13px] font-bold text-slate-850 leading-snug tracking-wide group-hover:text-blue-900 transition-colors line-clamp-2">
                             {video.videoTitle}
                           </h4>
                           
-                          {/* Latest logged day */}
                           <div className="flex items-center gap-1 text-[10px] text-slate-400 font-medium">
                             <SVGIcon name="Calendar" className="w-3.5 h-3.5 text-slate-400" />
-                            <span>上次上課日期：{video.latestPracticeDate}</span>
+                            <span>上次上課日期：{video.latestPracticeDate || "無"}</span>
                           </div>
                         </div>
 
-                        {/* Tags and Action footer */}
                         <div className="pt-3 border-t border-slate-100/60 flex items-center justify-between gap-2">
-                          
-                          {/* 標籤區塊 (單行、最多顯示4個包含 +N) */}
                           <div className="flex items-center gap-1.5 flex-1 min-w-0 overflow-hidden whitespace-nowrap">
                             {video.tags && video.tags.length > 0 ? (
                               <>
                                 {(video.tags.length > 4 ? video.tags.slice(0, 3) : video.tags).map((t) => (
                                   <span
                                     key={t}
-                                    className="px-2 py-1 rounded-md text-[10px] font-bold text-indigo-700 bg-indigo-50/90 border border-indigo-200/60 shrink-0 text-center min-w-[37px]"
+                                    className="px-2 py-1 rounded-md text-[10px] font-bold text-blue-700 bg-blue-50/90 border border-blue-200/60 shrink-0 text-center min-w-[37px]"
                                   >
                                     {t}
                                   </span>
@@ -1463,14 +1511,13 @@
                             )}
                           </div>
 
-                          {/* 操作按鈕 */}
                           <div className="flex items-center gap-1.5 shrink-0">
                             <button
                               title="編輯標籤"
                               onClick={() => handleOpenEditTags(video)}
                               className="flex items-center justify-center gap-1.5 py-1 px-2.5 border border-slate-200 bg-white hover:bg-slate-50 text-slate-600 text-[11px] font-bold rounded-lg transition-colors"
                             >
-                              <SVGIcon name="ClipboardEdit" className="w-3.5 h-3.5 text-indigo-600" />
+                              <SVGIcon name="ClipboardEdit" className="w-3.5 h-3.5 text-blue-600" />
                               <span>編輯</span>
                             </button>
 
@@ -1480,9 +1527,9 @@
                                 setQuickDuration(video.latestDuration || 15);
                                 setQuickDate(new Date().toISOString().split("T")[0]);
                               }}
-                              className="flex items-center justify-center gap-1 py-1 px-2.5 bg-indigo-600 hover:bg-indigo-700 text-white text-[11px] font-bold rounded-lg transition-colors shadow-xs"
+                              className="flex items-center justify-center gap-1 py-1 px-2.5 bg-blue-600 hover:bg-blue-700 text-white text-[11px] font-bold rounded-lg transition-colors shadow-xs"
                             >
-                              <SVGIcon name="Plus" className="w-3.5 h-3.5 text-indigo-100" />
+                              <SVGIcon name="Plus" className="w-3.5 h-3.5 text-blue-100" />
                               <span>再次上課</span>
                             </button>
                           </div>
@@ -1494,13 +1541,12 @@
               </div>
             )}
 
-            {/* Standalone Modal Boxes */}
             {quickLogVideo && ReactDOM.createPortal(
               <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-[2px] flex items-center justify-center p-4 z-50 animate-fade-in">
                 <div className="bg-white rounded-3xl p-6 max-w-sm w-full space-y-4 shadow-xl border border-slate-150 relative z-50">
                   <div className="flex justify-between items-center border-b pb-2">
                     <span className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
-                      <SVGIcon name="Dumbbell" className="w-4 h-4 text-indigo-500" />
+                      <SVGIcon name="Dumbbell" className="w-4 h-4 text-blue-500" />
                       <span>再次上課</span>
                     </span>
                     <button onClick={() => setQuickLogVideo(null)} className="text-slate-450 hover:text-slate-650">✕</button>
@@ -1511,18 +1557,16 @@
                     <p className="text-xs font-bold text-slate-850 leading-tight truncate-3">{quickLogVideo.videoTitle}</p>
                   </div>
 
-                  {/* 1. 打卡日期欄位 */}
                   <div className="space-y-1">
                     <label className="text-[10px] font-bold text-slate-500 uppercase block">打卡日期</label>
                     <input
                       type="date"
                       value={quickDate}
                       onChange={(e) => setQuickDate(e.target.value)}
-                      className="w-full h-10 px-3 border border-slate-200 bg-slate-50/50 rounded-xl text-xs font-sans text-left appearance-none focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+                      className="w-full h-10 px-3 border border-slate-200 bg-slate-50/50 rounded-xl text-xs font-sans text-left appearance-none focus:outline-none focus:ring-2 focus:ring-blue-500/20"
                     />
                   </div>
 
-                  {/* 2. 練習時長欄位 */}
                   <div className="space-y-1 mt-3">
                     <label className="text-[10px] font-bold text-slate-500 uppercase block">練習時長</label>
                     <input
@@ -1532,16 +1576,29 @@
                       min="1"
                       value={quickDuration}
                       onChange={(e) => setQuickDuration(e.target.value)}
-                      className="w-full h-10 px-3 border border-slate-200 bg-slate-50/50 rounded-xl text-xs font-sans text-left appearance-none focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+                      className="w-full h-10 px-3 border border-slate-200 bg-slate-50/50 rounded-xl text-xs font-sans text-left appearance-none focus:outline-none focus:ring-2 focus:ring-blue-500/20"
                     />
                   </div>
+                  
+                  {/* 💡 當再次上課選擇實體課程與未來日期，顯示預定時間 */}
+                  {isQuickPhysical && isQuickFuture && (
+                    <div className="space-y-1 mt-3">
+                      <label className="text-[10px] font-bold text-slate-500 uppercase block">預定時間</label>
+                      <input
+                        type="time"
+                        value={quickExpectedTime}
+                        onChange={(e) => setQuickExpectedTime(e.target.value)}
+                        className="w-full h-10 px-3 border border-slate-200 bg-slate-50/50 rounded-xl text-xs font-sans focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                      />
+                    </div>
+                  )}
 
                   <div className="flex gap-2 pt-1.5">
                     <button onClick={() => setQuickLogVideo(null)} className="flex-grow py-2 bg-slate-100 rounded-xl font-bold text-xs text-slate-650 hover:bg-slate-200">取消</button>
                     <button
                       onClick={handleQuickLogSubmit}
                       disabled={isSubmitting}
-                      className="flex-grow py-2 bg-indigo-600 text-white rounded-xl font-bold text-xs hover:bg-indigo-700"
+                      className="flex-grow py-2 bg-blue-600 text-white rounded-xl font-bold text-xs hover:bg-blue-700"
                     >
                       {isSubmitting ? "正在儲存..." : "再次上課"}
                     </button>
@@ -1551,19 +1608,17 @@
               document.body
             )}
 
-            {/* Custom tags/titles/thumbnails edit modal */}
             {editingTagsVideo && ReactDOM.createPortal(
               <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-[2px] flex items-center justify-center p-4 z-50 animate-fade-in">
                 <div className="bg-white rounded-[2rem] p-6 max-w-sm w-full space-y-4 shadow-xl border border-slate-150 relative z-50 overflow-y-auto max-h-[90vh]">
                   <div className="flex justify-between items-center border-b pb-2">
                     <span className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
-                      <SVGIcon name="FileEdit" className="w-4 h-4 text-indigo-500" />
+                      <SVGIcon name="FileEdit" className="w-4 h-4 text-blue-500" />
                       <span>自訂修改課程資訊</span>
                     </span>
                     <button onClick={() => setEditingTagsVideo(null)} className="text-slate-450 hover:text-slate-650">✕</button>
                   </div>
 
-                  {/* 1. Modify Title */}
                   <div className="space-y-1">
                     <label className="text-[10px] font-bold text-slate-500 uppercase block">課程名稱</label>
                     <input
@@ -1575,7 +1630,6 @@
                     />
                   </div>
 
-                  {/* 2. Modify Thumbnail link */}
                   <div className="space-y-1">
                     <label className="text-[10px] font-bold text-slate-500 uppercase block">圖片網址</label>
                     <input
@@ -1587,7 +1641,6 @@
                     />
                   </div>
 
-                  {/* 3. Modify Tags checkbox */}
                   <div className="space-y-2">
                     <label className="text-[10px] font-bold text-slate-500 uppercase block">分類標籤</label>
                     <div className="grid grid-cols-2 gap-2">
@@ -1600,7 +1653,7 @@
                             onClick={() => handleToggleTagInForm(tag)}
                             className={`py-1.5 px-3 rounded-lg border text-xs font-bold transition flex items-center justify-center gap-1 ${
                               hasSelected
-                                ? "bg-indigo-50 border-indigo-200 text-indigo-700 w-full"
+                                ? "bg-blue-50 border-blue-200 text-blue-700 w-full"
                                 : "bg-white border-slate-200 text-slate-400 hover:bg-slate-50 w-full"
                             }`}
                           >
@@ -1617,7 +1670,7 @@
                     <button
                       onClick={handleSaveTags}
                       disabled={isSavingTags}
-                      className="flex-1 py-2 bg-indigo-600 text-white rounded-xl font-bold text-xs duration-150 shadow-md shadow-indigo-100 cursor-pointer"
+                      className="flex-1 py-2 bg-blue-600 text-white rounded-xl font-bold text-xs duration-150 shadow-md shadow-blue-100 cursor-pointer"
                     >
                       {isSavingTags ? "儲存中..." : "儲存設定"}
                     </button>
@@ -1630,16 +1683,14 @@
         );
       }
 
-      // App Entry Container
       function App() {
         const [logs, setLogs] = useState([]);
+        const [menstrualDates, setMenstrualDates] = useState([]);
         const [loading, setLoading] = useState(true);
         const [activeTab, setActiveTab] = useState("check-in");
         
-        // 💡 1. 控制資料管理視窗的顯示狀態
         const [showDataModal, setShowDataModal] = useState(false);
 
-        // Selected Calendar date string
         const [selectedDate, setSelectedDate] = useState(() => {
           const today = new Date();
           const yyyy = today.getFullYear();
@@ -1648,18 +1699,22 @@
           return `${yyyy}-${mm}-${dd}`;
         });
 
-        // Load logs from Local Storage
         useEffect(() => {
           try {
-            const stored = localStorage.getItem(LOCAL_STORAGE_KEY);
-            if (stored) {
-              const parsed = JSON.parse(stored);
+            const storedLogs = localStorage.getItem(LOCAL_STORAGE_KEY);
+            if (storedLogs) {
+              const parsed = JSON.parse(storedLogs);
               parsed.sort((a, b) => {
                 const datesDiff = b.date.localeCompare(a.date);
                 if (datesDiff !== 0) return datesDiff;
                 return b.createdAt - a.createdAt;
               });
               setLogs(parsed);
+            }
+            
+            const storedMenstrual = localStorage.getItem(MENSTRUAL_STORAGE_KEY);
+            if (storedMenstrual) {
+              setMenstrualDates(JSON.parse(storedMenstrual));
             }
           } catch (e) {
             console.error(e);
@@ -1668,12 +1723,12 @@
           }
         }, []);
 
-        // 💡 2. 處理資料匯出與匯入的方法
         const handleExportData = () => {
           try {
             const dataToExport = {
               logs: logs,
-              pinned: JSON.parse(localStorage.getItem(PIN_STORAGE_KEY) || "[]")
+              pinned: JSON.parse(localStorage.getItem(PIN_STORAGE_KEY) || "[]"),
+              menstrual: menstrualDates
             };
             const dataStr = JSON.stringify(dataToExport, null, 2);
             const dataBlob = new Blob([dataStr], { type: "application/json" });
@@ -1704,6 +1759,9 @@
                   if (importedData.pinned) {
                     localStorage.setItem(PIN_STORAGE_KEY, JSON.stringify(importedData.pinned));
                   }
+                  if (importedData.menstrual) {
+                    localStorage.setItem(MENSTRUAL_STORAGE_KEY, JSON.stringify(importedData.menstrual));
+                  }
                   
                   alert("匯入成功");
                   window.location.reload();
@@ -1717,15 +1775,6 @@
           };
           reader.readAsText(file);
           event.target.value = '';
-        };
-
-        const saveToLocal = (updated) => {
-          setLogs(updated);
-          try {
-            localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(updated));
-          } catch (e) {
-            console.error(e);
-          }
         };
 
         const addLog = async (logData) => {
@@ -1760,36 +1809,40 @@
           });
         };
 
+        const toggleMenstrualDate = (dateStr) => {
+          setMenstrualDates((prev) => {
+            const next = prev.includes(dateStr) ? prev.filter(d => d !== dateStr) : [...prev, dateStr];
+            localStorage.setItem(MENSTRUAL_STORAGE_KEY, JSON.stringify(next));
+            return next;
+          });
+        };
+
         return (
           <div className="min-h-screen pb-16 font-sans relative overflow-hidden">
-            {/* Ambient Wall Mesh Gradients */}
             <div className="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] bg-pink-200/50 blur-[130px] rounded-full pointer-events-none z-0"></div>
-            <div className="absolute bottom-[5%] right-[-10%] w-[60%] h-[60%] bg-indigo-100/40 blur-[140px] rounded-full pointer-events-none z-0"></div>
+            <div className="absolute bottom-[5%] right-[-10%] w-[60%] h-[60%] bg-blue-100/40 blur-[140px] rounded-full pointer-events-none z-0"></div>
             <div className="absolute top-[25%] right-[10%] w-[40%] h-[40%] bg-amber-100/40 blur-[110px] rounded-full pointer-events-none z-0"></div>
 
-            {/* Navigation Header bar bar */}
             <header className="fixed top-0 left-0 right-0 z-40 bg-white/40 backdrop-blur-xl border-b border-white/60 shadow-xs">
               <div className="max-w-7xl mx-auto px-4 md:px-6 h-16 flex items-center justify-between relative z-10">
                 
-                {/* 💡 3. 將 Header 左側 LOGO 改為觸發匯出匯入彈跳視窗的按鈕 */}
                 <button
                   onClick={() => setShowDataModal(true)}
                   className="flex items-center gap-2.5 text-left cursor-pointer group focus:outline-none"
                   title="資料備份與匯出匯入"
                 >
-                  <div className="p-2 bg-indigo-600 group-hover:bg-indigo-700 transition text-white rounded-2xl flex items-center justify-center shadow-lg shadow-indigo-200 scale-100 active:scale-95 duration-150">
-                    <SVGIcon name="Flower" className="w-5 h-5 text-indigo-100" />
+                  <div className="p-2 bg-blue-600 group-hover:bg-blue-700 transition text-white rounded-2xl flex items-center justify-center shadow-lg shadow-blue-200 scale-100 active:scale-95 duration-150">
+                    <SVGIcon name="Flower" className="w-5 h-5 text-blue-100" />
                   </div>
-                  <h1 className="text-sm font-extrabold text-slate-900 tracking-tight group-hover:text-indigo-900 transition">皮拉提斯訓練紀錄</h1>
+                  <h1 className="text-sm font-extrabold text-slate-900 tracking-tight group-hover:text-blue-900 transition">皮拉提斯訓練紀錄</h1>
                 </button>
 
-                {/* Switching Tabs */}
                 <div className="bg-white/60 backdrop-blur-md border border-white/85 p-1 rounded-xl flex items-center gap-1 shadow-2xs">
                   <button
                     onClick={() => setActiveTab("check-in")}
                     className={`p-2 rounded-lg transition-all cursor-pointer flex items-center justify-center ${
                       activeTab === "check-in"
-                        ? "bg-white text-indigo-600 shadow-xs scale-102 border border-white/80"
+                        ? "bg-white text-blue-600 shadow-xs scale-102 border border-white/80"
                         : "text-slate-500 hover:text-slate-800"
                     }`}
                     title="打卡牆"
@@ -1800,7 +1853,7 @@
                     onClick={() => setActiveTab("videos")}
                     className={`p-2 rounded-lg transition-all cursor-pointer flex items-center justify-center ${
                       activeTab === "videos"
-                        ? "bg-white text-indigo-600 shadow-xs scale-102 border border-white/80"
+                        ? "bg-white text-blue-600 shadow-xs scale-102 border border-white/80"
                         : "text-slate-500 hover:text-slate-800"
                     }`}
                     title="課程庫"
@@ -1811,12 +1864,11 @@
               </div>
             </header>
 
-            {/* Main view container layout */}
             <main className="max-w-7xl mx-auto px-4 md:px-6 pt-[85px] pb-8 relative z-10">
               {loading ? (
                 <div className="py-24 text-center space-y-4">
                   <div className="inline-block p-4 bg-white/60 backdrop-blur-md border border-white/80 rounded-3xl shadow-xs">
-                    <div className="w-8 h-8 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin"></div>
+                    <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
                   </div>
                   <p className="text-xs font-bold text-slate-755">正在準備您的運動日誌模組...</p>
                 </div>
@@ -1830,6 +1882,8 @@
                       onUpdateLog={updateLog}
                       selectedDate={selectedDate}
                       onSelectDate={setSelectedDate}
+                      menstrualDates={menstrualDates}
+                      onToggleMenstrualDate={toggleMenstrualDate}
                     />
                   ) : (
                     <VideoRecordsPage
@@ -1854,14 +1908,12 @@
 
                   <div className="space-y-4">
                     <div className="space-y-2.5 pt-1">
-                      {/* 匯出按鈕 */}
                       <button
                         onClick={handleExportData}
-                        className="w-full py-2.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 rounded-xl font-bold text-xs transition flex items-center justify-center gap-2 cursor-pointer shadow-sm">
+                        className="w-full py-2.5 bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 rounded-xl font-bold text-xs transition flex items-center justify-center gap-2 cursor-pointer shadow-sm">
                         <span>匯出資料</span>
                       </button>
 
-                      {/* 匯入按鈕 */}
                       <label className="w-full py-2.5 bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 rounded-xl font-bold text-xs transition flex items-center justify-center gap-2 cursor-pointer shadow-sm">
                         <span>匯入資料</span>
                         <input
